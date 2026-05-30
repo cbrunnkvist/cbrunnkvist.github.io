@@ -1,0 +1,6 @@
+.playwright-mcp/
+*.png
+!frontier-site-*.png
+!hyperbliss*.png
+frontier-42pct-fonts.png
+frontier-webgl*.png

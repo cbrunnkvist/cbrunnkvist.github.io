@@ -1,0 +1,320 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>@casualsecurityinc | Conny Brunnkvist</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=VT323&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <!-- CRT Overlay Effects -->
+    <div class="crt-overlay">
+        <div class="scanlines"></div>
+        <div class="crt-flicker"></div>
+        <div class="vignette"></div>
+    </div>
+
+    <!-- Top Status Bar -->
+    <div class="status-bar top-bar">
+        <div class="status-left">
+            <span class="status-item">SYS: ONLINE</span>
+            <span class="status-item">VER: 2.4.1</span>
+        </div>
+        <div class="status-center">
+            <span class="status-item blink">● REC</span>
+        </div>
+        <div class="status-right">
+            <span class="status-item" id="clock">00:00:00</span>
+            <span class="status-item">SEC: ALPHA</span>
+        </div>
+    </div>
+
+    <!-- Navigation -->
+    <nav class="main-nav">
+        <div class="nav-brand">
+            <span class="brand-icon">◈</span>
+            <span class="brand-text">CasualSecurityInc</span>
+        </div>
+        <ul class="nav-links">
+            <li><a href="#home" class="nav-link active">[HOME]</a></li>
+            <li><a href="#about" class="nav-link">[ABOUT]</a></li>
+            <li><a href="#systems" class="nav-link">[SYSTEMS]</a></li>
+            <li><a href="#log" class="nav-link">[LOG]</a></li>
+            <li><a href="#contact" class="nav-link">[COMMS]</a></li>
+        </ul>
+    </nav>
+
+    <!-- Hero Section -->
+    <section id="home" class="hero-section">
+        <canvas id="spaceCanvas" class="space-canvas"></canvas>
+        <div class="hero-content">
+            <div class="hero-text">
+                <p class="hero-handle">@casualsecurityinc</p>
+                <h1 class="hero-title">
+                    <span class="title-line">Conny</span>
+                    <span class="title-line highlight">Brunnkvist</span>
+                </h1>
+                <p class="hero-subtitle">
+                    <span class="typing-text">Security specialist operating on the digital frontier...</span>
+                    <span class="cursor">_</span>
+                </p>
+                <div class="hero-socials">
+                    <a href="#" class="social-link" title="GitHub">
+                        <span class="social-icon">💻</span>
+                        <span class="social-label">GITHUB</span>
+                    </a>
+                    <a href="#" class="social-link" title="Twitter">
+                        <span class="social-icon">🐦</span>
+                        <span class="social-label">FEDERATION</span>
+                    </a>
+                    <a href="#" class="social-link" title="LinkedIn">
+                        <span class="social-icon">🔗</span>
+                        <span class="social-label">LINKEDIN</span>
+                    </a>
+                    <a href="#" class="social-link" title="Email">
+                        <span class="social-icon">✉</span>
+                        <span class="social-label">SECURE_MAIL</span>
+                    </a>
+                </div>
+            </div>
+        </div>
+        <div class="hero-decoration">
+            <div class="wireframe-box">
+                <div class="corner tl">┌</div>
+                <div class="corner tr">┐</div>
+                <div class="corner bl">└</div>
+                <div class="corner br">┘</div>
+            </div>
+        </div>
+    </section>
+
+    <!-- About Section - Frontier: Elite II Style -->
+    <section id="about" class="about-section">
+        <div class="fe2-panel">
+            <div class="fe2-panel-header">
+                <span class="fe2-header-title">COMMANDER PROFILE</span>
+                <span class="fe2-header-line">═══════════════════════</span>
+            </div>
+            <div class="fe2-panel-body">
+                <div class="fe2-portrait-col">
+                    <div class="fe2-portrait-box">
+                        <div class="fe2-portrait-img">
+                            <div class="portrait-placeholder">
+                                <span class="portrait-icon">◉</span>
+                                <span class="portrait-label">[NO IMAGE]</span>
+                            </div>
+                            <div class="portrait-scanline"></div>
+                        </div>
+                    </div>
+                    <div class="fe2-portrait-info">
+                        <div class="fe2-info-row">
+                            <span class="fe2-info-label">NAME:</span>
+                            <span class="fe2-info-value">Conny Brunnkvist</span>
+                        </div>
+                        <div class="fe2-info-row">
+                            <span class="fe2-info-label">ROLE:</span>
+                            <span class="fe2-info-value">Security Specialist</span>
+                        </div>
+                        <div class="fe2-info-row">
+                            <span class="fe2-info-label">STATUS:</span>
+                            <span class="fe2-info-value status-active">● ACTIVE</span>
+                        </div>
+                        <div class="fe2-info-row">
+                            <span class="fe2-info-label">RANK:</span>
+                            <span class="fe2-info-value">Elite</span>
+                        </div>
+                        <div class="fe2-info-row">
+                            <span class="fe2-info-label">SHIP:</span>
+                            <span class="fe2-info-value">Eagle Mk-II</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="fe2-details-col">
+                    <div class="fe2-details-header">
+                        <span class="fe2-details-title">PERSONNEL FILE</span>
+                    </div>
+                    <div class="fe2-details-content">
+                        <p class="fe2-paragraph">
+                            <span class="prompt">></span> Independent security contractor operating across the digital frontier. Specializing in penetration testing, vulnerability research, and defensive systems architecture.
+                        </p>
+                        <p class="fe2-paragraph">
+                            <span class="prompt">></span> Currently docked at <span class="highlight-text">CasualSecurityInc</span> station, maintaining and upgrading systems for long-range operations in hostile cyberspace.
+                        </p>
+                        <div class="fe2-skills">
+                            <div class="fe2-skill-row">
+                                <span class="fe2-skill-check">☑</span>
+                                <span class="fe2-skill-name">PENETRATION TESTING</span>
+                                <span class="fe2-skill-val">95%</span>
+                            </div>
+                            <div class="fe2-skill-row">
+                                <span class="fe2-skill-check">☑</span>
+                                <span class="fe2-skill-name">REVERSE ENGINEERING</span>
+                                <span class="fe2-skill-val">88%</span>
+                            </div>
+                            <div class="fe2-skill-row">
+                                <span class="fe2-skill-check">☑</span>
+                                <span class="fe2-skill-name">DEFENSIVE SYSTEMS</span>
+                                <span class="fe2-skill-val">92%</span>
+                            </div>
+                            <div class="fe2-skill-row">
+                                <span class="fe2-skill-check">☑</span>
+                                <span class="fe2-skill-name">VULNERABILITY RESEARCH</span>
+                                <span class="fe2-skill-val">85%</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Systems/Projects Section -->
+    <section id="systems" class="systems-section">
+        <div class="section-header">
+            <span class="section-icon">⚙</span>
+            <h2 class="section-title">SHIP SYSTEMS</h2>
+            <span class="section-line">═══════════════════════</span>
+        </div>
+        <div class="systems-grid">
+            <div class="system-card">
+                <div class="system-header">
+                    <span class="system-icon">🛡</span>
+                    <h3 class="system-name">SHIELD GENERATOR</h3>
+                    <span class="system-status online">ONLINE</span>
+                </div>
+                <p class="system-desc">Advanced web application firewall and intrusion detection systems. Real-time threat monitoring with automated response capabilities.</p>
+                <div class="system-stats">
+                    <span class="sys-stat">PWR: 85%</span>
+                    <span class="sys-stat">EFF: 92%</span>
+                </div>
+            </div>
+            <div class="system-card">
+                <div class="system-header">
+                    <span class="system-icon">🔍</span>
+                    <h3 class="system-name">SCANNER ARRAY</h3>
+                    <span class="system-status online">ONLINE</span>
+                </div>
+                <p class="system-desc">Deep reconnaissance and vulnerability assessment tools. Network mapping, service enumeration, and security posture analysis.</p>
+                <div class="system-stats">
+                    <span class="sys-stat">RNG: MAX</span>
+                    <span class="sys-stat">RES: 4K</span>
+                </div>
+            </div>
+            <div class="system-card">
+                <div class="system-header">
+                    <span class="system-icon">⚔</span>
+                    <h3 class="system-name">PULSE LASER</h3>
+                    <span class="system-status online">ONLINE</span>
+                </div>
+                <p class="system-desc">Precision exploitation framework. Custom payloads for targeted penetration testing and red team operations.</p>
+                <div class="system-stats">
+                    <span class="sys-stat">DMG: HIGH</span>
+                    <span class="sys-stat">ROF: 0.2s</span>
+                </div>
+            </div>
+            <div class="system-card">
+                <div class="system-header">
+                    <span class="system-icon">📡</span>
+                    <h3 class="system-name">NAV COMPUTER</h3>
+                    <span class="system-status online">ONLINE</span>
+                </div>
+                <p class="system-desc">Strategic security consulting and architecture review. Threat modeling, secure design patterns, and compliance mapping.</p>
+                <div class="system-stats">
+                    <span class="sys-stat">MEM: 64TB</span>
+                    <span class="sys-stat">SPD: FTL</span>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Log/Blog Section -->
+    <section id="log" class="log-section">
+        <div class="section-header">
+            <span class="section-icon">📋</span>
+            <h2 class="section-title">MISSION LOG</h2>
+            <span class="section-line">═══════════════════════</span>
+        </div>
+        <div class="log-entries">
+            <div class="log-entry">
+                <div class="log-header">
+                    <span class="log-date">3309-05-30</span>
+                    <span class="log-type">[UPDATE]</span>
+                </div>
+                <h3 class="log-title">System Hardening Complete</h3>
+                <p class="log-content">Completed comprehensive security audit of corporate infrastructure. Identified and patched 47 critical vulnerabilities. Deployed new IDS ruleset.</p>
+            </div>
+            <div class="log-entry">
+                <div class="log-header">
+                    <span class="log-date">3309-04-15</span>
+                    <span class="log-type">[DISCOVERY]</span>
+                </div>
+                <h3 class="log-title">Zero-Day Research Published</h3>
+                <p class="log-content">Responsible disclosure of critical RCE in popular web framework. Coordinated with vendor for patch release. CVE pending assignment.</p>
+            </div>
+            <div class="log-entry">
+                <div class="log-header">
+                    <span class="log-date">3309-03-22</span>
+                    <span class="log-type">[MISSION]</span>
+                </div>
+                <h3 class="log-title">Red Team Engagement - Success</h3>
+                <p class="log-content">Achieved domain compromise in 4 hours during authorized penetration test. Client's blue team response time improved by 300% post-engagement.</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- Contact/Comms Section -->
+    <section id="contact" class="contact-section">
+        <div class="section-header">
+            <span class="section-icon">📡</span>
+            <h2 class="section-title">OPEN COMMS</h2>
+            <span class="section-line">═══════════════════════</span>
+        </div>
+        <div class="contact-content">
+            <div class="contact-message">
+                <p class="contact-text">
+                    <span class="prompt">></span> Hailing frequencies open. Secure channels available for contract negotiations, vulnerability reports, or just swapping stories from the frontier.
+                </p>
+            </div>
+            <div class="contact-links">
+                <a href="#" class="contact-link">
+                    <span class="link-icon">✉</span>
+                    <span class="link-text">SECURE MAIL</span>
+                </a>
+                <a href="#" class="contact-link">
+                    <span class="link-icon">💻</span>
+                    <span class="link-text">GITHUB</span>
+                </a>
+                <a href="#" class="contact-link">
+                    <span class="link-icon">🐦</span>
+                    <span class="link-text">FEDERATION</span>
+                </a>
+                <a href="#" class="contact-link">
+                    <span class="link-icon">🔗</span>
+                    <span class="link-text">LINKEDIN</span>
+                </a>
+            </div>
+        </div>
+    </section>
+
+    <!-- Bottom Status Bar -->
+    <div class="status-bar bottom-bar">
+        <div class="status-left">
+            <span class="status-item">FUEL: 100%</span>
+            <span class="status-item">HULL: 100%</span>
+            <span class="status-item">CARGO: EMPTY</span>
+        </div>
+        <div class="status-center">
+            <span class="status-item">CasualSecurityInc v2.4.1</span>
+        </div>
+        <div class="status-right">
+            <span class="status-item">LAT: 51.5074° N</span>
+            <span class="status-item">LON: 0.1278° W</span>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
