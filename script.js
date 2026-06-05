@@ -65,8 +65,9 @@ typeEffect();
 
     let W, H;
     function resize() {
-        W = canvas.width = window.innerWidth;
-        H = canvas.height = window.innerHeight;
+        const rect = canvas.parentElement.getBoundingClientRect();
+        W = canvas.width = rect.width;
+        H = canvas.height = rect.height || window.innerHeight;
         gl.viewport(0, 0, W, H);
     }
     resize();
@@ -152,9 +153,11 @@ typeEffect();
         out vec4 fragColor;
         void main() {
             vec3 n = normalize(vViewNorm);
-            float facing = max(-n.z, 0.0);
-            float rim = pow(1.0 - facing, 2.5);
-            fragColor = vec4(uColor, rim * uIntensity);
+            float rim = 1.0 - abs(n.z);
+            float outerBand = smoothstep(0.08, 0.78, rim);
+            float brightEdge = smoothstep(0.70, 0.98, rim);
+            float band = max(outerBand * 0.72, brightEdge);
+            fragColor = vec4(uColor, band * uIntensity);
         }
     `;
 
@@ -172,6 +175,92 @@ typeEffect();
         out vec4 fragColor;
         void main() {
             fragColor = uColor;
+        }
+    `;
+
+    const PLANET_VS = `#version 300 es
+        layout(location=0) in vec3 aPos;
+        uniform mat4 uMVP;
+        uniform mat4 uModel;
+        out vec3 vWorldPos;
+        void main() {
+            gl_Position = uMVP * uModel * vec4(aPos, 1.0);
+            vWorldPos = (uModel * vec4(aPos, 1.0)).xyz;
+        }
+    `;
+
+    const PLANET_FS = `#version 300 es
+        precision highp float;
+        in vec3 vWorldPos;
+        uniform vec3 uCamPos;
+        uniform vec3 uLightDir;
+        uniform float uRadius;
+        out vec4 fragColor;
+
+        float hash(vec3 p) {
+            return fract(sin(dot(p, vec3(127.1, 311.7, 74.7))) * 43758.5453);
+        }
+
+        float steppedNoise(vec3 p) {
+            return floor(hash(floor(p)) * 5.0) / 5.0;
+        }
+
+        float continentCap(vec3 n, vec3 axis, float radius) {
+            return dot(n, normalize(axis)) - radius;
+        }
+
+        float landMass(vec3 n) {
+            float coast = (steppedNoise(n * 7.0) - 0.5) * 0.16;
+            coast += (steppedNoise(n * 13.0 + vec3(11.0, 7.0, 3.0)) - 0.5) * 0.07;
+            float score = -0.46;
+            score = max(score, continentCap(n, vec3(-0.78, 0.10, 0.62), 0.50));
+            score = max(score, continentCap(n, vec3(-0.22,-0.55, 0.80), 0.58));
+            score = max(score, continentCap(n, vec3( 0.58, 0.18, 0.70), 0.66));
+            score = max(score, continentCap(n, vec3( 0.20,-0.82, 0.35), 0.60));
+            score = max(score, continentCap(n, vec3(-0.60,-0.10,-0.68), 0.64));
+            return score + coast;
+        }
+
+        void main() {
+            vec3 n = normalize(vWorldPos);
+            vec3 rd = normalize(vWorldPos - uCamPos);
+
+            // Polar ice caps
+            float absY = abs(n.y);
+            if (absY > 0.82) {
+                vec3 iceColor = vec3(0.82, 0.86, 0.92);
+                float light = dot(n, normalize(uLightDir));
+                float shade = light > 0.1 ? 1.0 : light > -0.3 ? 0.6 : 0.3;
+                fragColor = vec4(iceColor * shade, 1.0);
+                return;
+            }
+
+            float land = landMass(n);
+            vec3 baseColor;
+            if (land < -0.08) {
+                baseColor = vec3(0.45, 0.46, 0.70);
+            } else if (land < 0.03) {
+                baseColor = vec3(0.52, 0.54, 0.76);
+            } else if (land < 0.16) {
+                baseColor = vec3(0.42, 0.70, 0.39);
+            } else {
+                baseColor = vec3(0.47, 0.74, 0.43);
+            }
+
+            float rim = 1.0 - max(dot(n, -rd), 0.0);
+            float atmos = smoothstep(0.50, 0.90, rim);
+            vec3 atmosColor = vec3(0.55, 0.60, 0.90);
+            baseColor = mix(baseColor, atmosColor, atmos * 0.34);
+
+            // FE2-style stepped shading (not smooth gradient)
+            float lightDot = dot(n, normalize(uLightDir));
+            float shade;
+            if (lightDot > 0.15) shade = 1.0;
+            else if (lightDot > -0.15) shade = 0.65;
+            else if (lightDot > -0.45) shade = 0.38;
+            else shade = 0.18;
+
+            fragColor = vec4(baseColor * shade, 1.0);
         }
     `;
 
@@ -199,6 +288,7 @@ typeEffect();
     const starProg = link(STAR_VS, STAR_FS);
     const atmoProg = link(ATMO_VS, ATMO_FS);
     const wireProg = link(WIRE_VS, WIRE_FS);
+    const planetProg = link(PLANET_VS, PLANET_FS);
 
     const U = (prog, names) => {
         const u = {};
@@ -209,6 +299,7 @@ typeEffect();
     const starU = U(starProg, ['uMVP', 'uTime']);
     const atmoU = U(atmoProg, ['uMVP', 'uModelView', 'uScale', 'uColor', 'uIntensity']);
     const wireU = U(wireProg, ['uMVP', 'uColor']);
+    const planetU = U(planetProg, ['uMVP', 'uModel', 'uCamPos', 'uLightDir', 'uRadius']);
 
     // ── Matrix Math ──
     const I = () => { const m = new Float32Array(16); m[0] = m[5] = m[10] = m[15] = 1; return m; };
@@ -266,6 +357,49 @@ typeEffect();
         return mul(m, t);
     };
 
+    const scaleXYZ = (m, sx, sy, sz) => {
+        const t = I(); t[0] = sx; t[5] = sy; t[10] = sz;
+        return mul(m, t);
+    };
+
+    const rotZ = (m, a) => {
+        const r = I(); const c = Math.cos(a), s = Math.sin(a);
+        r[0] = c; r[1] = s; r[4] = -s; r[5] = c;
+        return mul(m, r);
+    };
+
+    // ── Noise for procedural planet textures ──
+    function noise3D(x, y, z) {
+        const n = Math.sin(x * 127.1 + y * 311.7 + z * 74.7) * 43758.5453;
+        return n - Math.floor(n);
+    }
+
+    function smoothNoise(x, y, z) {
+        const ix = Math.floor(x), iy = Math.floor(y), iz = Math.floor(z);
+        const fx = x - ix, fy = y - iy, fz = z - iz;
+        const ux = fx * fx * (3 - 2 * fx);
+        const uy = fy * fy * (3 - 2 * fy);
+        const uz = fz * fz * (3 - 2 * fz);
+        const n = (a, b, c) => noise3D(a, b, c);
+        const nx00 = n(ix,iy,iz) + (n(ix+1,iy,iz) - n(ix,iy,iz)) * ux;
+        const nx10 = n(ix,iy+1,iz) + (n(ix+1,iy+1,iz) - n(ix,iy+1,iz)) * ux;
+        const nx01 = n(ix,iy,iz+1) + (n(ix+1,iy,iz+1) - n(ix,iy,iz+1)) * ux;
+        const nx11 = n(ix,iy+1,iz+1) + (n(ix+1,iy+1,iz+1) - n(ix,iy+1,iz+1)) * ux;
+        const nxy0 = nx00 + (nx10 - nx00) * uy;
+        const nxy1 = nx01 + (nx11 - nx01) * uy;
+        return nxy0 + (nxy1 - nxy0) * uz;
+    }
+
+    function fbm(x, y, z, octaves) {
+        let val = 0, amp = 0.5, freq = 1;
+        for (let i = 0; i < octaves; i++) {
+            val += amp * smoothNoise(x * freq, y * freq, z * freq);
+            amp *= 0.5;
+            freq *= 2;
+        }
+        return val;
+    }
+
     // ── Geometry: Icosphere ──
     function createIcosphere(subdivs) {
         const phi = (1 + Math.sqrt(5)) / 2;
@@ -313,30 +447,51 @@ typeEffect();
             const bx = v[bi], by = v[bi + 1], bz = v[bi + 2];
             const cx = v[ci], cy = v[ci + 1], cz = v[ci + 2];
 
-            const ux = bx - ax, uy = by - ay, uz = bz - az;
-            const vx = cx - ax, vy = cy - ay, vz = cz - az;
-            let nx = uy * vz - uz * vy, ny = uz * vx - ux * vz, nz = ux * vy - uy * vx;
-            const nl = Math.sqrt(nx * nx + ny * ny + nz * nz) || 1;
-            nx /= nl; ny /= nl; nz /= nl;
+            const nal = Math.sqrt(ax*ax + ay*ay + az*az) || 1;
+            const nbl = Math.sqrt(bx*bx + by*by + bz*bz) || 1;
+            const ncl = Math.sqrt(cx*cx + cy*cy + cz*cz) || 1;
+            const nax = ax/nal, nay = ay/nal, naz = az/nal;
+            const nbx = bx/nbl, nby = by/nbl, nbz = bz/nbl;
+            const ncx = cx/ncl, ncy = cy/ncl, ncz = cz/ncl;
 
             pos.push(ax, ay, az, bx, by, bz, cx, cy, cz);
-            nrm.push(nx, ny, nz, nx, ny, nz, nx, ny, nz);
+            nrm.push(nax, nay, naz, nbx, nby, nbz, ncx, ncy, ncz);
 
-            const up = ny;
+            // Earth-like procedural coloring
+            // Sample noise at face center for consistent color per face
+            const fcx = (ax + bx + cx) / 3;
+            const fcy = (ay + by + cy) / 3;
+            const fcz = (az + bz + cz) / 3;
+
+            const continent = fbm(fcx * 2 + 50, fcy * 2 + 50, fcz * 2 + 50, 3);
+            const detail = fbm(fcx * 6 + 100, fcy * 6 + 100, fcz * 6 + 100, 2);
+            const absY = Math.abs(fcy);
+
             let r, g, b;
-            if (up > 0.5) {
-                r = 0.7 + up * 0.2; g = 0.75 + up * 0.15; b = 0.85 + up * 0.1;
-            } else if (up > 0.0) {
-                r = 0.15 + up * 0.25; g = 0.35 + up * 0.3; b = 0.15 + up * 0.1;
-            } else if (up > -0.5) {
-                r = 0.25 - up * 0.1; g = 0.3 - up * 0.05; b = 0.18;
+            if (absY > 0.82) {
+                // Polar ice caps
+                r = 0.82 + detail * 0.1; g = 0.85 + detail * 0.08; b = 0.9 + detail * 0.05;
+            } else if (continent < 0.40) {
+                // Deep ocean
+                r = 0.04; g = 0.10 + detail * 0.05; b = 0.28 + detail * 0.08;
+            } else if (continent < 0.48) {
+                // Shallow water
+                r = 0.06; g = 0.18 + detail * 0.06; b = 0.38 + detail * 0.06;
+            } else if (continent < 0.52) {
+                // Coastal sand
+                r = 0.58; g = 0.52; b = 0.32;
+            } else if (continent < 0.70) {
+                // Green land
+                r = 0.12 + detail * 0.08; g = 0.30 + detail * 0.12; b = 0.08 + detail * 0.04;
+            } else if (continent < 0.82) {
+                // Brown highlands
+                r = 0.30 + detail * 0.08; g = 0.22 + detail * 0.06; b = 0.12;
             } else {
-                r = 0.12; g = 0.18 - up * 0.1; b = 0.28 - up * 0.1;
+                // Mountain peaks (grey)
+                const snow = (continent - 0.82) * 4;
+                r = 0.42 + snow * 0.35; g = 0.40 + snow * 0.35; b = 0.38 + snow * 0.35;
             }
-            const hash = ((f[i] * 7 + f[i + 1] * 13 + f[i + 2] * 23) % 100) / 100;
-            r += (hash - 0.5) * 0.08;
-            g += (hash - 0.5) * 0.06;
-            b += (hash - 0.5) * 0.04;
+
             col.push(r, g, b, r, g, b, r, g, b);
 
             for (const [e1, e2] of [[f[i], f[i + 1]], [f[i + 1], f[i + 2]], [f[i + 2], f[i]]]) {
@@ -358,82 +513,122 @@ typeEffect();
         };
     }
 
-    // ── Geometry: Ship ──
-    function createShip() {
+    // ── Geometry: Cobra MKIII (from Oolite: oolite/Resources/Models/cobra3_redux.dat) ──
+    // 12 vertices, 20 faces, 130x30x65 model-units, CCW winding, licensed GPLv2+
+    function createCobraMk3() {
         const pos = [], nrm = [], col = [];
+        const s = 0.01; // scale factor: 130 wide → 1.3 world-units
 
-        function tri(ax, ay, az, bx, by, bz, cx, cy, cz, r, g, b) {
-            const ux = bx - ax, uy = by - ay, uz = bz - az;
-            const vx = cx - ax, vy = cy - ay, vz = cz - az;
-            let nx = uy * vz - uz * vy, ny = uz * vx - ux * vz, nz = ux * vy - uy * vx;
-            const nl = Math.sqrt(nx * nx + ny * ny + nz * nz) || 1;
-            nx /= nl; ny /= nl; nz /= nl;
-            pos.push(ax, ay, az, bx, by, bz, cx, cy, cz);
-            nrm.push(nx, ny, nz, nx, ny, nz, nx, ny, nz);
-            col.push(r, g, b, r, g, b, r, g, b);
+        const verts = [
+            0.00*s,  15.00*s,   0.00*s,   // 0  top-center nose
+           16.00*s,  -0.50*s,  32.50*s,   // 1  right nose tip
+          -16.00*s,  -0.50*s,  32.50*s,   // 2  left nose tip
+           16.00*s, -15.00*s, -32.50*s,   // 3  right tail
+          -16.00*s, -15.00*s, -32.50*s,   // 4  left tail
+          -44.00*s,  10.00*s, -32.50*s,   // 5  left wing top
+          -60.00*s,  -3.00*s, -13.00*s,   // 6  left wing mid
+          -65.00*s,  -3.00*s, -32.50*s,   // 7  left wing tip
+           44.00*s,  10.00*s, -32.50*s,   // 8  right wing top
+           60.00*s,  -3.00*s, -13.00*s,   // 9  right wing mid
+           65.00*s,  -3.00*s, -32.50*s,   // 10 right wing tip
+            0.00*s,  15.00*s, -32.50*s,   // 11 top-center tail
+        ];
+
+        // faces: [vi0, vi1, vi2, nx, ny, nz]
+        const faces = [
+            [1,0,8,    0.31034, 0.90832, 0.28042],
+            [2,0,1,    0.00000, 0.90260, 0.43047],
+            [3,1,9,    0.16730,-0.96225, 0.21466],
+            [4,2,1,    0.00000,-0.97601, 0.21773],
+            [4,1,3,    0.00000,-0.97601, 0.21773],
+            [4,7,6,   -0.23743,-0.96950, 0.06088],
+            [5,0,2,   -0.31034, 0.90832, 0.28042],
+            [5,2,6,   -0.35745, 0.88545, 0.29701],
+            [6,2,4,   -0.16730,-0.96225, 0.21466],
+            [7,5,6,   -0.52163, 0.84263, 0.13375],
+            [8,0,11,   0.11291, 0.99361, 0.00000],
+            [8,11,5,   0.00000, 0.00000,-1.00000],
+            [8,5,7,    0.00000, 0.00000,-1.00000],
+            [8,7,4,    0.00000, 0.00000,-1.00000],
+            [8,4,3,    0.00000, 0.00000,-1.00000],
+            [8,3,10,   0.00000, 0.00000,-1.00000],
+            [9,1,8,    0.35745, 0.88545, 0.29701],
+            [9,8,10,   0.52163, 0.84263, 0.13375],
+            [9,10,3,   0.23743,-0.96950, 0.06088],
+            [11,0,5,  -0.11291, 0.99361, 0.00000],
+        ];
+
+        for (const f of faces) {
+            const [i0,i1,i2] = f;
+            const ax=verts[i0*3], ay=verts[i0*3+1], az=verts[i0*3+2];
+            const bx=verts[i1*3], by=verts[i1*3+1], bz=verts[i1*3+2];
+            const cx=verts[i2*3], cy=verts[i2*3+1], cz=verts[i2*3+2];
+            const nx=f[3], ny=f[4], nz=f[5];
+
+            // Color by face orientation
+            const top = ny;
+            let r, g, b;
+            if (top > 0.8) {
+                // Top surfaces: lighter metallic
+                r = 0.62; g = 0.64; b = 0.70;
+            } else if (top > 0.3) {
+                // Upper-angled faces
+                r = 0.52; g = 0.54; b = 0.58;
+            } else if (top > -0.3) {
+                // Side faces: medium
+                r = 0.42; g = 0.44; b = 0.48;
+            } else if (top > -0.8) {
+                // Lower-angled faces
+                r = 0.35; g = 0.37; b = 0.40;
+            } else {
+                // Bottom: dark
+                r = 0.28; g = 0.30; b = 0.33;
+            }
+
+            pos.push(ax,ay,az, bx,by,bz, cx,cy,cz);
+            nrm.push(nx,ny,nz, nx,ny,nz, nx,ny,nz);
+            col.push(r,g,b, r,g,b, r,g,b);
         }
-
-        // Top surface - light grey
-        tri(0, 0.08, 2, -1.5, 0, -0.5, 0, 0.25, 0.3, 0.65, 0.65, 0.7);
-        tri(0, 0.08, 2, 0, 0.25, 0.3, 1.5, 0, -0.5, 0.65, 0.65, 0.7);
-        tri(0, 0.25, 0.3, -1.5, 0, -0.5, 0, 0, -1.5, 0.6, 0.6, 0.65);
-        tri(0, 0.25, 0.3, 0, 0, -1.5, 1.5, 0, -0.5, 0.6, 0.6, 0.65);
-
-        // Bottom surface - darker
-        tri(0, -0.05, 2, 0, -0.02, 0.3, -1.5, -0.03, -0.5, 0.35, 0.35, 0.4);
-        tri(0, -0.05, 2, 1.5, -0.03, -0.5, 0, -0.02, 0.3, 0.35, 0.35, 0.4);
-        tri(0, -0.02, 0.3, 0, -0.02, -1.5, -1.5, -0.03, -0.5, 0.3, 0.3, 0.35);
-        tri(0, -0.02, 0.3, 1.5, -0.03, -0.5, 0, -0.02, -1.5, 0.3, 0.3, 0.35);
-
-        // Left edge
-        tri(0, 0.08, 2, 0, -0.05, 2, -1.5, 0, -0.5, 0.5, 0.5, 0.55);
-        tri(-1.5, 0, -0.5, 0, -0.05, 2, -1.5, -0.03, -0.5, 0.5, 0.5, 0.55);
-        tri(-1.5, 0, -0.5, -1.5, -0.03, -0.5, 0, 0, -1.5, 0.45, 0.45, 0.5);
-        tri(0, 0, -1.5, -1.5, -0.03, -0.5, 0, -0.02, -1.5, 0.45, 0.45, 0.5);
-
-        // Right edge
-        tri(0, 0.08, 2, 1.5, 0, -0.5, 0, -0.05, 2, 0.5, 0.5, 0.55);
-        tri(1.5, 0, -0.5, 1.5, -0.03, -0.5, 0, -0.05, 2, 0.5, 0.5, 0.55);
-        tri(1.5, 0, -0.5, 0, 0, -1.5, 1.5, -0.03, -0.5, 0.45, 0.45, 0.5);
-        tri(0, 0, -1.5, 0, -0.02, -1.5, 1.5, -0.03, -0.5, 0.45, 0.45, 0.5);
-
-        // Tail edge
-        tri(0, 0, -1.5, 0, -0.02, -1.5, -1.5, -0.03, -0.5, 0.4, 0.4, 0.45);
-        tri(0, 0, -1.5, 1.5, -0.03, -0.5, 0, -0.02, -1.5, 0.4, 0.4, 0.45);
-
-        // Left engine pod
-        tri(-0.9, 0.06, -1.5, -0.9, 0.06, -2.2, -0.5, 0.06, -1.5, 0.5, 0.5, 0.55);
-        tri(-0.5, 0.06, -1.5, -0.9, 0.06, -2.2, -0.5, 0.06, -2.2, 0.5, 0.5, 0.55);
-        tri(-0.9, -0.04, -1.5, -0.5, -0.04, -1.5, -0.9, -0.04, -2.2, 0.35, 0.35, 0.4);
-        tri(-0.5, -0.04, -1.5, -0.5, -0.04, -2.2, -0.9, -0.04, -2.2, 0.35, 0.35, 0.4);
-        tri(-0.9, 0.06, -1.5, -0.9, -0.04, -1.5, -0.9, 0.06, -2.2, 0.45, 0.45, 0.5);
-        tri(-0.9, -0.04, -1.5, -0.9, -0.04, -2.2, -0.9, 0.06, -2.2, 0.45, 0.45, 0.5);
-        tri(-0.5, 0.06, -1.5, -0.5, 0.06, -2.2, -0.5, -0.04, -1.5, 0.45, 0.45, 0.5);
-        tri(-0.5, -0.04, -1.5, -0.5, 0.06, -2.2, -0.5, -0.04, -2.2, 0.45, 0.45, 0.5);
-        tri(-0.9, 0.06, -2.2, -0.9, -0.04, -2.2, -0.5, 0.06, -2.2, 1.0, 0.4, 0.0);
-        tri(-0.5, 0.06, -2.2, -0.9, -0.04, -2.2, -0.5, -0.04, -2.2, 1.0, 0.4, 0.0);
-
-        // Right engine pod
-        tri(0.5, 0.06, -1.5, 0.5, 0.06, -2.2, 0.9, 0.06, -1.5, 0.5, 0.5, 0.55);
-        tri(0.9, 0.06, -1.5, 0.5, 0.06, -2.2, 0.9, 0.06, -2.2, 0.5, 0.5, 0.55);
-        tri(0.5, -0.04, -1.5, 0.9, -0.04, -1.5, 0.5, -0.04, -2.2, 0.35, 0.35, 0.4);
-        tri(0.9, -0.04, -1.5, 0.9, -0.04, -2.2, 0.5, -0.04, -2.2, 0.35, 0.35, 0.4);
-        tri(0.5, 0.06, -1.5, 0.5, -0.04, -1.5, 0.5, 0.06, -2.2, 0.45, 0.45, 0.5);
-        tri(0.5, -0.04, -1.5, 0.5, -0.04, -2.2, 0.5, 0.06, -2.2, 0.45, 0.45, 0.5);
-        tri(0.9, 0.06, -1.5, 0.9, 0.06, -2.2, 0.9, -0.04, -1.5, 0.45, 0.45, 0.5);
-        tri(0.9, -0.04, -1.5, 0.9, 0.06, -2.2, 0.9, -0.04, -2.2, 0.45, 0.45, 0.5);
-        tri(0.5, 0.06, -2.2, 0.5, -0.04, -2.2, 0.9, 0.06, -2.2, 1.0, 0.4, 0.0);
-        tri(0.9, 0.06, -2.2, 0.5, -0.04, -2.2, 0.9, -0.04, -2.2, 1.0, 0.4, 0.0);
-
-        // Cockpit highlight (cyan accent on top)
-        tri(0.15, 0.26, 0.3, 0, 0.32, 0.1, -0.15, 0.26, 0.3, 0.0, 0.8, 0.85);
-        tri(0, 0.08, 1.2, 0.15, 0.26, 0.3, -0.15, 0.26, 0.3, 0.0, 0.7, 0.75);
 
         return {
             positions: new Float32Array(pos),
             normals: new Float32Array(nrm),
             colors: new Float32Array(col),
             vertexCount: pos.length / 3
+        };
+    }
+
+    // ── Geometry: Engine Flame ──
+    function createFlameGeometry() {
+        // Diamond cross-section flame: base at z=0, tip at z=-1
+        // Scale Z at render time to animate length
+        const bx = 0.14, by = 0.09; // base half-spreads
+        const pos = [
+            // 4 triangles from base edges to tip
+            -bx, 0, 0,    0,  by, 0,    0, 0, -1,
+             0,  by, 0,    bx, 0, 0,    0, 0, -1,
+             bx, 0, 0,    0, -by*0.7,0, 0, 0, -1,
+             0, -by*0.7,0,-bx, 0, 0,    0, 0, -1,
+        ];
+        const nrm = [];
+        for (let i = 0; i < pos.length; i += 3) nrm.push(0, 1, 0);
+        return {
+            positions: new Float32Array(pos),
+            normals: new Float32Array(nrm),
+            vertexCount: pos.length / 3,
+        };
+    }
+
+    // ── Geometry: Trim Thruster Puff ──
+    function createThrusterGeometry() {
+        // Small single triangle for a thruster puff
+        const s = 0.06;
+        return {
+            positions: new Float32Array([
+                -s, 0, 0,   s, 0, 0,   0, 0, -s*2.5,
+            ]),
+            normals: new Float32Array([0,1,0, 0,1,0, 0,1,0]),
+            vertexCount: 3,
         };
     }
 
@@ -455,7 +650,7 @@ typeEffect();
 
     // ── Create Geometry & Buffers ──
     const planet = createIcosphere(3);
-    const shipGeom = createShip();
+    const shipGeom = createCobraMk3();
     const stars = createStars(600);
 
     function makeBuf(data, target) {
@@ -476,6 +671,14 @@ typeEffect();
 
     const starPosBuf = makeBuf(stars.positions);
     const starSizeBuf = makeBuf(stars.sizes);
+
+    const flameGeom = createFlameGeometry();
+    const flamePosBuf = makeBuf(flameGeom.positions);
+    const flameNormBuf = makeBuf(flameGeom.normals);
+
+    const thrusterGeom = createThrusterGeometry();
+    const thrusterPosBuf = makeBuf(thrusterGeom.positions);
+    const thrusterNormBuf = makeBuf(thrusterGeom.normals);
 
     // ── Render ──
     let time = 0;
@@ -527,68 +730,281 @@ typeEffect();
         gl.depthMask(true);
         gl.disableVertexAttribArray(1);
 
-        // === Planet ===
-        gl.useProgram(solidProg);
-        const planetModel = rotY(I(), time * 0.08);
-        gl.uniformMatrix4fv(solidU.uMVP, false, vp);
-        gl.uniformMatrix4fv(solidU.uModel, false, planetModel);
-        gl.uniform3fv(solidU.uLightDir, lightDir);
-        const pc = bindSolid(planetPosBuf, planetNormBuf, planetColorBuf, planet.vertexCount);
-        gl.drawArrays(gl.TRIANGLES, 0, pc);
-
-        // === Planet Wireframe ===
-        gl.useProgram(wireProg);
-        gl.uniformMatrix4fv(wireU.uMVP, false, mul(vp, planetModel));
-        gl.uniform4f(wireU.uColor, 0.0, 1.0, 0.25, 0.06);
-        gl.bindBuffer(gl.ARRAY_BUFFER, planetEdgeBuf);
-        gl.enableVertexAttribArray(0);
-        gl.vertexAttribPointer(0, 3, gl.FLOAT, false, 0, 0);
-        gl.disableVertexAttribArray(1);
-        gl.disableVertexAttribArray(2);
-        gl.depthMask(false);
-        gl.drawArrays(gl.LINES, 0, planet.edgeCount);
-        gl.depthMask(true);
-
-        // === Atmosphere ===
-        gl.useProgram(atmoProg);
-        const planetMV = mul(view, planetModel);
-        gl.uniformMatrix4fv(atmoU.uMVP, false, mul(vp, planetModel));
-        gl.uniformMatrix4fv(atmoU.uModelView, false, planetMV);
-        gl.uniform1f(atmoU.uScale, 1.12);
-        gl.uniform3f(atmoU.uColor, 0.2, 0.5, 0.9);
-        gl.uniform1f(atmoU.uIntensity, 0.35);
+        // === Planet (FE2-style fragment shader sphere) ===
+        const planetModel = rotY(I(), time * 0.06);
+        const planetMvp = mul(vp, planetModel);
+        gl.useProgram(planetProg);
+        gl.uniformMatrix4fv(planetU.uMVP, false, vp);
+        gl.uniformMatrix4fv(planetU.uModel, false, planetModel);
+        gl.uniform3f(planetU.uCamPos, 0, 2, 8);
+        gl.uniform3fv(planetU.uLightDir, lightDir);
+        gl.uniform1f(planetU.uRadius, 1.0);
         gl.bindBuffer(gl.ARRAY_BUFFER, planetPosBuf);
         gl.enableVertexAttribArray(0);
         gl.vertexAttribPointer(0, 3, gl.FLOAT, false, 0, 0);
         gl.disableVertexAttribArray(1);
         gl.disableVertexAttribArray(2);
+        gl.drawArrays(gl.TRIANGLES, 0, planet.vertexCount);
+
+        // === Planet atmosphere bands ===
+        gl.useProgram(atmoProg);
+        gl.blendFunc(gl.SRC_ALPHA, gl.ONE);
         gl.depthMask(false);
+        gl.uniformMatrix4fv(atmoU.uMVP, false, planetMvp);
+        gl.uniformMatrix4fv(atmoU.uModelView, false, mul(view, planetModel));
+        gl.uniform1f(atmoU.uScale, 1.11);
+        gl.uniform3f(atmoU.uColor, 0.34, 0.55, 0.92);
+        gl.uniform1f(atmoU.uIntensity, 0.34);
+        gl.bindBuffer(gl.ARRAY_BUFFER, planetPosBuf);
+        gl.enableVertexAttribArray(0);
+        gl.vertexAttribPointer(0, 3, gl.FLOAT, false, 0, 0);
         gl.drawArrays(gl.TRIANGLES, 0, planet.vertexCount);
         gl.depthMask(true);
+        gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
 
         // === Ship ===
         gl.useProgram(solidProg);
-        const orbitA = time * 0.12;
-        const orbitR = 5.5;
+        const orbitA = time * 0.035;
+        const orbitR = 3.0;
         const sx = Math.cos(orbitA) * orbitR;
         const sz = Math.sin(orbitA) * orbitR;
-        const sy = Math.sin(time * 0.4) * 0.3 + 0.5;
+        const sy = Math.sin(time * 0.25) * 0.15 + 0.3;
         let shipModel = I();
         shipModel = translate(shipModel, sx, sy, sz);
         shipModel = rotY(shipModel, -orbitA + Math.PI / 2);
-        shipModel = rotX(shipModel, Math.sin(time * 0.3) * 0.05);
-        shipModel = scale3(shipModel, 0.45);
+        shipModel = rotX(shipModel, Math.sin(time * 0.2) * 0.04);
+        shipModel = scale3(shipModel, 0.6);
         gl.uniformMatrix4fv(solidU.uMVP, false, vp);
         gl.uniformMatrix4fv(solidU.uModel, false, shipModel);
         gl.uniform3fv(solidU.uLightDir, lightDir);
         const sc = bindSolid(shipPosBuf, shipNormBuf, shipColorBuf, shipGeom.vertexCount);
         gl.drawArrays(gl.TRIANGLES, 0, sc);
 
+        // === Engine Flames (additive blend) ===
+        gl.blendFunc(gl.SRC_ALPHA, gl.ONE);
+        const flameColor = new Float32Array([0.4, 0.92, 1.0]);
+
+        // Main rear engine flame
+        const mainJitter = Math.sin(time * 47.3) * 0.06 + Math.sin(time * 31.1) * 0.04;
+        const surgeTick = Math.floor(time * 3.5);
+        const sH = Math.sin(surgeTick * 93.7 + 17.3) * 43758.5453;
+        const sR = sH - Math.floor(sH);
+        const prevH = Math.sin((surgeTick - 1) * 93.7 + 17.3) * 43758.5453;
+        const prevR = prevH - Math.floor(prevH);
+        const mainSurge = (sR > 0.78) ? 0.25 + sR * 0.2 : (prevR > 0.78) ? 0.12 + prevR * 0.08 : 0;
+        const flameLen = 0.4 + mainJitter + mainSurge;
+        let flameModel = translate(shipModel, 0, 0, -0.325);
+        flameModel = scaleXYZ(flameModel, 1, 1, flameLen);
+        gl.uniformMatrix4fv(solidU.uMVP, false, vp);
+        gl.uniformMatrix4fv(solidU.uModel, false, flameModel);
+        gl.uniform3fv(solidU.uLightDir, new Float32Array([0, 1, 0]));
+        gl.bindBuffer(gl.ARRAY_BUFFER, flamePosBuf);
+        gl.enableVertexAttribArray(0);
+        gl.vertexAttribPointer(0, 3, gl.FLOAT, false, 0, 0);
+        gl.bindBuffer(gl.ARRAY_BUFFER, flameNormBuf);
+        gl.enableVertexAttribArray(1);
+        gl.vertexAttribPointer(1, 3, gl.FLOAT, false, 0, 0);
+        gl.bindBuffer(gl.ARRAY_BUFFER, null);
+        gl.disableVertexAttribArray(2);
+        gl.vertexAttrib3f(2, flameColor[0], flameColor[1], flameColor[2]);
+        gl.drawArrays(gl.TRIANGLES, 0, flameGeom.vertexCount);
+
+        // Trim thrusters (intermittent bursts)
+        const thrusters = [
+            { x:-0.65, y:-0.03, z:-0.30, rx:0, ry:0, rz:1, freq:3.7, phase:0.0 },
+            { x: 0.65, y:-0.03, z:-0.30, rx:0, ry:0, rz:1, freq:4.3, phase:1.7 },
+            { x: 0,    y: 0.15, z:-0.15, rx:0, ry:0, rz:1, freq:5.1, phase:3.1 },
+            { x: 0,   y:-0.13, z:-0.15, rx:0, ry:0, rz:1, freq:2.9, phase:5.0 },
+        ];
+        gl.bindBuffer(gl.ARRAY_BUFFER, thrusterPosBuf);
+        gl.enableVertexAttribArray(0);
+        gl.vertexAttribPointer(0, 3, gl.FLOAT, false, 0, 0);
+        gl.bindBuffer(gl.ARRAY_BUFFER, thrusterNormBuf);
+        gl.enableVertexAttribArray(1);
+        gl.vertexAttribPointer(1, 3, gl.FLOAT, false, 0, 0);
+        gl.disableVertexAttribArray(2);
+        gl.vertexAttrib3f(2, 0.3, 0.85, 1.0);
+
+        for (const t of thrusters) {
+            // Discrete time steps: check every ~0.12s for sharp on/off
+            const burstInterval = 0.12 + t.phase * 0.015;
+            const burstTick = Math.floor(time / burstInterval);
+            const h = Math.sin(burstTick * 127.1 + t.freq * 311.7 + t.phase * 74.3) * 43758.5453;
+            const rand = h - Math.floor(h);
+            const isFiring = rand > 0.55;
+
+            if (isFiring) {
+                // Random rotation around flame axis (vibration)
+                const vibAngle = (rand * 20 + time * 18) % (Math.PI * 2);
+                const tScale = 0.09 + rand * 0.11;
+                let tModel = translate(shipModel, t.x, t.y, t.z);
+                tModel = rotZ(tModel, vibAngle);
+                tModel = scaleXYZ(tModel, tScale, tScale, tScale * 1.3);
+                gl.uniformMatrix4fv(solidU.uModel, false, tModel);
+                gl.drawArrays(gl.TRIANGLES, 0, thrusterGeom.vertexCount);
+            }
+        }
+
+        // Restore normal blending
+        gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
+
         disableAttribs();
         requestAnimationFrame(render);
     }
 
     render();
+})();
+
+// ── Nav Bar FE2 Galaxy Map Canvas ──
+(function () {
+    const navCanvas = document.getElementById('navCanvas');
+    if (!navCanvas) return;
+    const ctx = navCanvas.getContext('2d');
+
+    let w, h;
+    function resize() {
+        const rect = navCanvas.parentElement.getBoundingClientRect();
+        w = navCanvas.width = rect.width;
+        h = navCanvas.height = rect.height;
+    }
+    resize();
+    window.addEventListener('resize', resize);
+
+    const nodeCount = 55;
+    const nodes = [];
+    for (let i = 0; i < nodeCount; i++) {
+        nodes.push({
+            angle: Math.random() * Math.PI * 2,
+            radius: Math.pow(Math.random(), 1.2) * 0.9 + 0.05,
+            size: Math.random() * 2.2 + 0.6,
+            major: Math.random() < 0.15,
+            phase: Math.random() * Math.PI * 2,
+            hue: 210 + Math.random() * 50,
+        });
+    }
+
+    const connections = [];
+    const cx = 0, cy = 0;
+    const rx = 1.0, ry = 0.55;
+    const connectThresh = 0.35;
+
+    function toXY(node) {
+        return {
+            x: cx + Math.cos(node.angle) * rx * node.radius,
+            y: cy + Math.sin(node.angle) * ry * node.radius,
+        };
+    }
+
+    const screenNodes = nodes.map(toXY);
+    for (let i = 0; i < nodes.length; i++) {
+        for (let j = i + 1; j < nodes.length; j++) {
+            const dx = screenNodes[i].x - screenNodes[j].x;
+            const dy = screenNodes[i].y - screenNodes[j].y;
+            const d = Math.sqrt(dx * dx + dy * dy);
+            if (d < connectThresh) {
+                connections.push({ i, j, dist: d });
+            }
+        }
+    }
+
+    let rotation = 0;
+    const centerX = () => w / 2;
+    const centerY = () => h / 2;
+    const scaleX = () => w * 0.72;
+    const scaleY = () => h * 0.68;
+
+    function draw(timestamp) {
+        if (navCanvas.parentElement.getBoundingClientRect().height === 0) {
+            requestAnimationFrame(draw);
+            return;
+        }
+
+        ctx.clearRect(0, 0, w, h);
+
+        rotation += 0.0008;
+        const t = timestamp * 0.001;
+        const bobX = Math.sin(t * 0.3) * w * 0.015;
+        const bobY = Math.cos(t * 0.22) * h * 0.02;
+        const cos = Math.cos(rotation);
+        const sin = Math.sin(rotation);
+        const sx = scaleX();
+        const sy = scaleY();
+        const midX = centerX() + bobX;
+        const midY = centerY() + bobY;
+
+        ctx.save();
+        ctx.globalCompositeOperation = 'source-over';
+        ctx.strokeStyle = 'rgba(0, 255, 255, 0.18)';
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        const gridStep = Math.max(28, Math.floor(w / 18));
+        for (let x = (midX % gridStep) - gridStep; x < w + gridStep; x += gridStep) {
+            ctx.moveTo(x, 0);
+            ctx.lineTo(x + Math.sin(t * 0.25) * 8, h);
+        }
+        for (let y = (midY % gridStep) - gridStep; y < h + gridStep; y += gridStep) {
+            ctx.moveTo(0, y);
+            ctx.lineTo(w, y + Math.cos(t * 0.25) * 5);
+        }
+        ctx.stroke();
+
+        ctx.strokeStyle = 'rgba(255, 204, 0, 0.16)';
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.ellipse(midX, midY, sx * 0.42, sy * 0.42, rotation * 0.35, 0, Math.PI * 2);
+        ctx.ellipse(midX, midY, sx * 0.68, sy * 0.62, -rotation * 0.25, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.restore();
+
+        ctx.strokeStyle = 'rgba(125, 190, 255, 0.48)';
+        ctx.lineWidth = 1.1;
+        ctx.beginPath();
+        for (const { i, j } of connections) {
+            const a = nodes[i], b = nodes[j];
+            const aOsc = Math.sin(t * 1.8 + a.phase) * 0.04;
+            const bOsc = Math.sin(t * 1.8 + b.phase) * 0.04;
+            const ar = a.radius + aOsc;
+            const br = b.radius + bOsc;
+            const ax = midX + (cos * Math.cos(a.angle) - sin * Math.sin(a.angle)) * sx * ar;
+            const ay = midY + (sin * Math.cos(a.angle) + cos * Math.sin(a.angle)) * sy * ar;
+            const bx = midX + (cos * Math.cos(b.angle) - sin * Math.sin(b.angle)) * sx * br;
+            const by = midY + (sin * Math.cos(b.angle) + cos * Math.sin(b.angle)) * sy * br;
+            ctx.moveTo(ax, ay);
+            ctx.lineTo(bx, by);
+        }
+        ctx.stroke();
+
+        for (const node of nodes) {
+            const aOsc = Math.sin(t * 1.8 + node.phase) * 0.04;
+            const a = node.angle + rotation;
+            const r = node.radius + aOsc;
+            const x = midX + Math.cos(a) * sx * r;
+            const y = midY + Math.sin(a) * sy * r;
+            const twinkle = 0.55 + 0.45 * Math.sin(timestamp * 0.002 + node.phase);
+
+            if (node.major) {
+                ctx.fillStyle = `rgba(255, 220, 120, ${0.70 + twinkle * 0.30})`;
+                ctx.beginPath();
+                ctx.arc(x, y, node.size + 2.2, 0, Math.PI * 2);
+                ctx.fill();
+                const glow = ctx.createRadialGradient(x, y, 0, x, y, node.size + 7);
+                glow.addColorStop(0, `rgba(255, 220, 120, ${0.36 + twinkle * 0.20})`);
+                glow.addColorStop(1, 'rgba(220, 200, 140, 0)');
+                ctx.fillStyle = glow;
+                ctx.beginPath();
+                ctx.arc(x, y, node.size + 7, 0, Math.PI * 2);
+                ctx.fill();
+            } else {
+                ctx.fillStyle = `rgba(180, 225, 255, ${0.55 + twinkle * 0.28})`;
+                ctx.beginPath();
+                ctx.arc(x, y, node.size + 0.4, 0, Math.PI * 2);
+                ctx.fill();
+            }
+        }
+
+        requestAnimationFrame(draw);
+    }
+    requestAnimationFrame(draw);
 })();
 
 // ── Smooth Scroll for Nav Links ──
@@ -644,20 +1060,19 @@ const skillObserver = new IntersectionObserver((entries) => {
 const skillsGrid = document.querySelector('.skills-grid');
 if (skillsGrid) skillObserver.observe(skillsGrid);
 
-// ── Random Glitch Effect on Title ──
+// ── Glitch Effect on Title (click to trigger) ──
 const heroTitle = document.querySelector('.hero-title');
 if (heroTitle) {
-    setInterval(() => {
-        if (Math.random() > 0.95) {
-            heroTitle.style.textShadow = `
-                ${Math.random() * 10 - 5}px ${Math.random() * 10 - 5}px 0 var(--fe2-red),
-                ${Math.random() * 10 - 5}px ${Math.random() * 10 - 5}px 0 var(--fe2-cyan)
-            `;
-            setTimeout(() => {
-                heroTitle.style.textShadow = '4px 4px 0 var(--fe2-panel)';
-            }, 100);
-        }
-    }, 2000);
+    heroTitle.addEventListener('click', () => {
+        const g = () => `${Math.random() * 50 - 25}px ${Math.random() * 30 - 15}px`;
+        heroTitle.style.textShadow = `${g()} 0 var(--fe2-red), ${g()} 0 var(--fe2-cyan)`;
+        setTimeout(() => {
+            heroTitle.style.textShadow = `${g()} 0 var(--fe2-red), ${g()} 0 var(--fe2-cyan)`;
+        }, 80);
+        setTimeout(() => {
+            heroTitle.style.textShadow = '1px 1px 0 var(--fe2-panel)';
+        }, 180);
+    });
 }
 
 // ── Console Easter Egg ──

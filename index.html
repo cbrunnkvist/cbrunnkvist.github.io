@@ -7,7 +7,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=VT323&family=Share+Tech+Mono&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="styles.css?v=fe2-nav-planet-6">
 </head>
 <body>
     <!-- CRT Overlay Effects -->
@@ -34,6 +34,7 @@
 
     <!-- Navigation -->
     <nav class="main-nav">
+        <canvas id="navCanvas" class="nav-canvas"></canvas>
         <div class="nav-brand">
             <span class="brand-icon">◈</span>
             <span class="brand-text">CasualSecurityInc</span>
@@ -50,12 +51,12 @@
     <!-- Hero Section -->
     <section id="home" class="hero-section">
         <canvas id="spaceCanvas" class="space-canvas"></canvas>
-        <div class="hero-content">
-            <div class="hero-text">
+        <div class="hero-layout">
+            <div class="hero-main">
                 <p class="hero-handle">@casualsecurityinc</p>
                 <h1 class="hero-title">
                     <span class="title-line">Conny</span>
-                    <span class="title-line highlight">Brunnkvist</span>
+                    <span class="title-line">Brunnkvist</span>
                 </h1>
                 <p class="hero-subtitle">
                     <span class="typing-text">Security specialist operating on the digital frontier...</span>
@@ -80,14 +81,30 @@
                     </a>
                 </div>
             </div>
-        </div>
-        <div class="hero-decoration">
-            <div class="wireframe-box">
-                <div class="corner tl">┌</div>
-                <div class="corner tr">┐</div>
-                <div class="corner bl">└</div>
-                <div class="corner br">┘</div>
-            </div>
+            <aside class="hero-sidebar">
+                <div class="sidebar-header">
+                    <span class="sidebar-icon">📋</span>
+                    <span class="sidebar-title">LATEST INTEL</span>
+                </div>
+                <div class="news-feed">
+                    <div class="news-item">
+                        <span class="news-date">3309.05.30</span>
+                        <p class="news-text">System hardening complete. 47 critical vulnerabilities patched across corporate infrastructure.</p>
+                    </div>
+                    <div class="news-item">
+                        <span class="news-date">3309.04.15</span>
+                        <p class="news-text">Zero-day research published. Responsible disclosure of critical RCE in popular web framework.</p>
+                    </div>
+                    <div class="news-item">
+                        <span class="news-date">3309.03.22</span>
+                        <p class="news-text">Red team engagement complete. Domain compromise achieved in 4 hours. Client blue team response improved 300%.</p>
+                    </div>
+                    <div class="news-item">
+                        <span class="news-date">3309.02.08</span>
+                        <p class="news-text">New IDS ruleset deployed. Real-time threat monitoring now operational across all perimeter nodes.</p>
+                    </div>
+                </div>
+            </aside>
         </div>
     </section>
 
@@ -95,18 +112,16 @@
     <section id="about" class="about-section">
         <div class="fe2-panel">
             <div class="fe2-panel-header">
-                <span class="fe2-header-title">COMMANDER PROFILE</span>
+                <span class="fe2-header-title">OPERATOR PROFILE</span>
                 <span class="fe2-header-line">═══════════════════════</span>
             </div>
             <div class="fe2-panel-body">
                 <div class="fe2-portrait-col">
                     <div class="fe2-portrait-box">
                         <div class="fe2-portrait-img">
-                            <div class="portrait-placeholder">
-                                <span class="portrait-icon">◉</span>
-                                <span class="portrait-label">[NO IMAGE]</span>
-                            </div>
+                            <img src="commander-mugshot.png?v=7" alt="Commander Conny Brunnkvist" class="portrait-image">
                             <div class="portrait-scanline"></div>
+                            <div class="portrait-overlay-scanlines"></div>
                         </div>
                     </div>
                     <div class="fe2-portrait-info">
@@ -116,19 +131,23 @@
                         </div>
                         <div class="fe2-info-row">
                             <span class="fe2-info-label">ROLE:</span>
-                            <span class="fe2-info-value">Security Specialist</span>
+                            <span class="fe2-info-value">Software Eng. Leader & Security Practitioner</span>
                         </div>
                         <div class="fe2-info-row">
                             <span class="fe2-info-label">STATUS:</span>
                             <span class="fe2-info-value status-active">● ACTIVE</span>
                         </div>
                         <div class="fe2-info-row">
-                            <span class="fe2-info-label">RANK:</span>
-                            <span class="fe2-info-value">Elite</span>
+                            <span class="fe2-info-label">EXP:</span>
+                            <span class="fe2-info-value">20+ Years</span>
                         </div>
                         <div class="fe2-info-row">
-                            <span class="fe2-info-label">SHIP:</span>
-                            <span class="fe2-info-value">Eagle Mk-II</span>
+                            <span class="fe2-info-label">BASE:</span>
+                            <span class="fe2-info-value">Siem Reap, Cambodia</span>
+                        </div>
+                        <div class="fe2-info-row">
+                            <span class="fe2-info-label">NATION:</span>
+                            <span class="fe2-info-value">Swedish</span>
                         </div>
                     </div>
                 </div>
@@ -138,31 +157,49 @@
                     </div>
                     <div class="fe2-details-content">
                         <p class="fe2-paragraph">
-                            <span class="prompt">></span> Independent security contractor operating across the digital frontier. Specializing in penetration testing, vulnerability research, and defensive systems architecture.
+                            <span class="prompt">></span> Results-driven Software Engineering Leader, Architect, and Security Practitioner with over 20 years of international experience in infrastructure, platforms, full-stack development, QA automation, and cybersecurity.
                         </p>
                         <p class="fe2-paragraph">
-                            <span class="prompt">></span> Currently docked at <span class="highlight-text">CasualSecurityInc</span> station, maintaining and upgrading systems for long-range operations in hostile cyberspace.
+                            <span class="prompt">></span> Former Tech Lead at <span class="highlight-text">Agoda</span> — designed large-scale big data pipelines, led key internal web applications, pioneered organization-wide adoption of new technology stacks and modern testing methodologies, and tirelessly improved shared CI infrastructure performance and reliability for the benefit of all engineering teams.
+                        </p>
+                        <p class="fe2-paragraph">
+                            <span class="prompt">></span> Currently operating independently via <span class="highlight-text">CasualSecurityInc</span> — conducting cybersecurity assessments, OSINT investigations, and contributing to open-source privacy-enhancing technologies in the Nano (XNO) ecosystem. Heavy adopter of AI-augmented development.
                         </p>
                         <div class="fe2-skills">
                             <div class="fe2-skill-row">
                                 <span class="fe2-skill-check">☑</span>
-                                <span class="fe2-skill-name">PENETRATION TESTING</span>
+                                <span class="fe2-skill-name">PLATFORM ENGINEERING</span>
                                 <span class="fe2-skill-val">95%</span>
                             </div>
                             <div class="fe2-skill-row">
                                 <span class="fe2-skill-check">☑</span>
-                                <span class="fe2-skill-name">REVERSE ENGINEERING</span>
-                                <span class="fe2-skill-val">88%</span>
-                            </div>
-                            <div class="fe2-skill-row">
-                                <span class="fe2-skill-check">☑</span>
-                                <span class="fe2-skill-name">DEFENSIVE SYSTEMS</span>
+                                <span class="fe2-skill-name">CYBERSECURITY & OSINT</span>
                                 <span class="fe2-skill-val">92%</span>
                             </div>
                             <div class="fe2-skill-row">
                                 <span class="fe2-skill-check">☑</span>
-                                <span class="fe2-skill-name">VULNERABILITY RESEARCH</span>
-                                <span class="fe2-skill-val">85%</span>
+                                <span class="fe2-skill-name">BIG DATA & STREAMING</span>
+                                <span class="fe2-skill-val">90%</span>
+                            </div>
+                            <div class="fe2-skill-row">
+                                <span class="fe2-skill-check">☑</span>
+                                <span class="fe2-skill-name">FULL-STACK DEVELOPMENT</span>
+                                <span class="fe2-skill-val">93%</span>
+                            </div>
+                            <div class="fe2-skill-row">
+                                <span class="fe2-skill-check">☑</span>
+                                <span class="fe2-skill-name">QA AUTOMATION & E2E</span>
+                                <span class="fe2-skill-val">88%</span>
+                            </div>
+                            <div class="fe2-skill-row">
+                                <span class="fe2-skill-check">☑</span>
+                                <span class="fe2-skill-name">CI/CD & DEVOPS</span>
+                                <span class="fe2-skill-val">91%</span>
+                            </div>
+                            <div class="fe2-skill-row">
+                                <span class="fe2-skill-check">☑</span>
+                                <span class="fe2-skill-name">OPEN SOURCE ADVOCATE</span>
+                                <span class="fe2-skill-val">100%</span>
                             </div>
                         </div>
                     </div>
@@ -315,6 +352,6 @@
         </div>
     </div>
 
-    <script src="script.js"></script>
+    <script src="script.js?v=fe2-nav-planet-6"></script>
 </body>
 </html>
