@@ -64,14 +64,47 @@ typeEffect();
     if (!gl) return;
 
     let W, H;
+    let resizeObserver = null;
+
     function resize() {
-        const rect = canvas.parentElement.getBoundingClientRect();
-        W = canvas.width = rect.width;
-        H = canvas.height = rect.height || window.innerHeight;
+        const parent = canvas.parentElement;
+        if (!parent) return;
+        const rect = parent.getBoundingClientRect();
+        const newW = Math.max(1, Math.floor(rect.width));
+        const newH = Math.max(1, Math.floor(rect.height || window.innerHeight));
+        if (newW === W && newH === H) return;
+        W = canvas.width = newW;
+        H = canvas.height = newH;
         gl.viewport(0, 0, W, H);
     }
+
     resize();
     window.addEventListener('resize', resize);
+
+    // Use ResizeObserver so we react to *any* size change of the hero container,
+    // including those caused by async font loading, flex settling, or sidebar content.
+    // This is the main fix for "wrong on load, correct after any manual resize".
+    if (typeof ResizeObserver !== 'undefined') {
+        resizeObserver = new ResizeObserver(() => resize());
+        resizeObserver.observe(canvas.parentElement);
+    }
+
+    // Fonts (Press Start 2P + VT323 + Share Tech Mono) are the most common cause
+    // of late reflow in the hero. Re-measure once they are ready.
+    if (document.fonts && document.fonts.ready) {
+        document.fonts.ready.then(() => {
+            resize();
+            requestAnimationFrame(resize);
+        });
+    }
+
+    // Extra safety nets for first-load timing (layout passes, other async resources).
+    window.addEventListener('load', () => {
+        resize();
+        requestAnimationFrame(resize);
+    });
+    setTimeout(resize, 50);
+    setTimeout(resize, 250);
 
     gl.clearColor(0.0, 0.0, 0.015, 1.0);
     gl.enable(gl.DEPTH_TEST);
@@ -210,14 +243,24 @@ typeEffect();
         }
 
         float landMass(vec3 n) {
-            float coast = (steppedNoise(n * 7.0) - 0.5) * 0.16;
-            coast += (steppedNoise(n * 13.0 + vec3(11.0, 7.0, 3.0)) - 0.5) * 0.07;
-            float score = -0.46;
+            // Multi-octave stepped noise for coastlines
+            float coast = (steppedNoise(n * 5.0) - 0.5) * 0.15;
+            coast += (steppedNoise(n * 9.0 + vec3(5.0, 11.0, 7.0)) - 0.5) * 0.09;
+            coast += (steppedNoise(n * 17.0 + vec3(19.0, 3.0, 13.0)) - 0.5) * 0.05;
+
+            float score = -0.48;
+
+            // Major continents (original 5)
             score = max(score, continentCap(n, vec3(-0.78, 0.10, 0.62), 0.50));
             score = max(score, continentCap(n, vec3(-0.22,-0.55, 0.80), 0.58));
             score = max(score, continentCap(n, vec3( 0.58, 0.18, 0.70), 0.66));
             score = max(score, continentCap(n, vec3( 0.20,-0.82, 0.35), 0.60));
             score = max(score, continentCap(n, vec3(-0.60,-0.10,-0.68), 0.64));
+
+            // Small island archipelagos
+            score = max(score, continentCap(n, vec3( 0.82, 0.30,-0.30), 0.26));
+            score = max(score, continentCap(n, vec3(-0.68, 0.48,-0.22), 0.24));
+
             return score + coast;
         }
 
@@ -237,14 +280,16 @@ typeEffect();
 
             float land = landMass(n);
             vec3 baseColor;
-            if (land < -0.08) {
-                baseColor = vec3(0.45, 0.46, 0.70);
-            } else if (land < 0.03) {
-                baseColor = vec3(0.52, 0.54, 0.76);
-            } else if (land < 0.16) {
-                baseColor = vec3(0.42, 0.70, 0.39);
+            if (land < -0.05) {
+                baseColor = vec3(0.18, 0.30, 0.56); // ocean
+            } else if (land < 0.04) {
+                baseColor = vec3(0.42, 0.50, 0.72); // shallow water
+            } else if (land < 0.14) {
+                baseColor = vec3(0.28, 0.56, 0.22); // green lowlands
+            } else if (land < 0.26) {
+                baseColor = vec3(0.48, 0.42, 0.26); // dry highlands
             } else {
-                baseColor = vec3(0.47, 0.74, 0.43);
+                baseColor = vec3(0.18, 0.30, 0.56); // deep ocean (noise peaks)
             }
 
             float rim = 1.0 - max(dot(n, -rd), 0.0);
@@ -680,6 +725,17 @@ typeEffect();
     const thrusterPosBuf = makeBuf(thrusterGeom.positions);
     const thrusterNormBuf = makeBuf(thrusterGeom.normals);
 
+    // ── Elite II: Frontier style "starfield-lite" / travel particles ──
+    // Tiny particles occasionally flying past in the ship's travel direction.
+    // Spawned relative to the current ship position + heading so the effect
+    // feels attached to an external camera "with" the ship. Particles are
+    // given velocity along the nose (+Z in the Cobra model) so they travel
+    // the same way the ship is heading (thrusters = back).
+    const maxTravelParticles = 48;
+    const travelParticles = []; // { pos: [x,y,z], vel: [x,y,z], life: number }[]
+    const travelPosBuf = makeBuf(new Float32Array(maxTravelParticles * 3));
+    const travelSizeBuf = makeBuf(new Float32Array(maxTravelParticles));
+
     // ── Render ──
     let time = 0;
     const lightDir = new Float32Array([0.6, 0.8, 0.5]);
@@ -714,6 +770,118 @@ typeEffect();
         const proj = perspective(0.7, aspect, 0.1, 500);
         const view = lookAt([0, 2, 8], [0, 0, 0], [0, 1, 0]);
         const vp = mul(proj, view);
+
+        // ── Update & spawn Elite II-style travel particles (relative to ship) ──
+        // These give a sense of motion in the direction the ship is travelling.
+        // The external camera feels "with" the ship because particles are spawned
+        // using its current world position + orientation (nose = forward).
+        {
+            const DT = 0.016;
+            const TRAVEL_SPEED = 4.2; // artistic relative speed (not the real slow orbital speed)
+
+            // Compute current ship position + forward from the same rules used for rendering the Cobra.
+            // (Duplicated math is small and keeps the draw site untouched.)
+            const orbitA = time * 0.035;
+            const orbitR = 3.0;
+            const sx = Math.cos(orbitA) * orbitR;
+            const sz = Math.sin(orbitA) * orbitR;
+            const sy = Math.sin(time * 0.25) * 0.15 + 0.3;
+            const theta = -orbitA + Math.PI / 2;
+            const phi = Math.sin(time * 0.2) * 0.04;
+
+            const shipPos = [sx, sy, sz];
+
+            // Build the rotation part that orients the ship (Ry * Rx applied to model dirs).
+            // This matches how shipModel is later constructed for drawing.
+            let rx = rotX(I(), phi);
+            let ry = rotY(I(), theta);
+            let shipRotM = mul(ry, rx);
+
+            // Local +Z in the Cobra model is the nose (front). Thrusters are on the -Z back.
+            const localFwd = [0, 0, 1];
+            let shipFwd = [
+                shipRotM[0] * localFwd[0] + shipRotM[4] * localFwd[1] + shipRotM[8] * localFwd[2],
+                shipRotM[1] * localFwd[0] + shipRotM[5] * localFwd[1] + shipRotM[9] * localFwd[2],
+                shipRotM[2] * localFwd[0] + shipRotM[6] * localFwd[1] + shipRotM[10] * localFwd[2]
+            ];
+            const fl = Math.hypot(shipFwd[0], shipFwd[1], shipFwd[2]) || 1;
+            shipFwd[0] /= fl; shipFwd[1] /= fl; shipFwd[2] /= fl;
+
+            // Update living particles (they move in world space)
+            for (let i = travelParticles.length - 1; i >= 0; i--) {
+                const p = travelParticles[i];
+                p.pos[0] += p.vel[0] * DT;
+                p.pos[1] += p.vel[1] * DT;
+                p.pos[2] += p.vel[2] * DT;
+                p.life -= DT;
+                if (p.life <= 0) {
+                    travelParticles.splice(i, 1);
+                }
+            }
+
+            // Occasionally spawn new ones *behind* the ship (negative local Z) with velocity
+            // along the current heading. They will fly forward and visibly pass the ship
+            // (and therefore the external camera's view of it) in the travel direction.
+            if (travelParticles.length < maxTravelParticles && Math.random() < 0.13) {
+                const spawnCount = (Math.random() < 0.25) ? 2 : 1;
+                for (let k = 0; k < spawnCount; k++) {
+                    // Local offset: behind the tail + some sideways/up jitter.
+                    // Positive local Z = nose direction in the Cobra model.
+                    const localZ = - (2.8 + Math.random() * 3.2); // behind
+                    const localX = (Math.random() - 0.5) * 2.4;
+                    const localY = (Math.random() - 0.5) * 1.7;
+                    const localOff = [localX, localY, localZ];
+
+                    // Transform local offset by the ship's current orientation into world
+                    const off = [
+                        shipRotM[0]*localOff[0] + shipRotM[4]*localOff[1] + shipRotM[8]*localOff[2],
+                        shipRotM[1]*localOff[0] + shipRotM[5]*localOff[1] + shipRotM[9]*localOff[2],
+                        shipRotM[2]*localOff[0] + shipRotM[6]*localOff[1] + shipRotM[10]*localOff[2]
+                    ];
+
+                    const pos = [
+                        shipPos[0] + off[0],
+                        shipPos[1] + off[1],
+                        shipPos[2] + off[2]
+                    ];
+
+                    // Velocity mostly in the ship's forward direction (+ travel dir).
+                    // Slight speed variation + perpendicular noise so they don't all look identical.
+                    const spd = TRAVEL_SPEED + (Math.random() - 0.5) * 2.2;
+                    const vel = [
+                        shipFwd[0] * spd + (Math.random() - 0.5) * 1.8,
+                        shipFwd[1] * spd + (Math.random() - 0.5) * 1.4,
+                        shipFwd[2] * spd + (Math.random() - 0.5) * 1.8
+                    ];
+
+                    travelParticles.push({
+                        pos: pos,
+                        vel: vel,
+                        life: 1.8 + Math.random() * 2.2
+                    });
+                }
+            }
+
+            // Upload current particles to the GPU buffers (dynamic, small count)
+            if (travelParticles.length > 0) {
+                const ppos = new Float32Array(maxTravelParticles * 3);
+                const psize = new Float32Array(maxTravelParticles);
+                for (let i = 0; i < travelParticles.length; i++) {
+                    const p = travelParticles[i];
+                    const b = i * 3;
+                    ppos[b + 0] = p.pos[0];
+                    ppos[b + 1] = p.pos[1];
+                    ppos[b + 2] = p.pos[2];
+                    // Tiny, with a little life-based size pop and random sparkle
+                    const lifeFade = Math.max(0.3, Math.min(1.0, p.life / 2.8));
+                    psize[i] = (0.55 + Math.random() * 0.65) * lifeFade;
+                }
+                gl.bindBuffer(gl.ARRAY_BUFFER, travelPosBuf);
+                gl.bufferData(gl.ARRAY_BUFFER, ppos, gl.DYNAMIC_DRAW);
+                gl.bindBuffer(gl.ARRAY_BUFFER, travelSizeBuf);
+                gl.bufferData(gl.ARRAY_BUFFER, psize, gl.DYNAMIC_DRAW);
+            }
+        }
 
         // === Stars ===
         gl.useProgram(starProg);
@@ -761,6 +929,27 @@ typeEffect();
         gl.drawArrays(gl.TRIANGLES, 0, planet.vertexCount);
         gl.depthMask(true);
         gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
+
+        // === Travel particles (Elite II: Frontier "starfield-lite") ===
+        // Drawn with the same soft point shader as the distant stars.
+        // depthMask(false) keeps these tiny motion specks visible as they
+        // streak past the ship from the external camera's viewpoint.
+        if (travelParticles.length > 0) {
+            gl.useProgram(starProg);
+            gl.uniformMatrix4fv(starU.uMVP, false, vp);
+            gl.uniform1f(starU.uTime, time);
+            gl.bindBuffer(gl.ARRAY_BUFFER, travelPosBuf);
+            gl.enableVertexAttribArray(0);
+            gl.vertexAttribPointer(0, 3, gl.FLOAT, false, 0, 0);
+            gl.bindBuffer(gl.ARRAY_BUFFER, travelSizeBuf);
+            gl.enableVertexAttribArray(1);
+            gl.vertexAttribPointer(1, 1, gl.FLOAT, false, 0, 0);
+            gl.depthMask(false);
+            gl.drawArrays(gl.POINTS, 0, travelParticles.length);
+            gl.depthMask(true);
+            gl.disableVertexAttribArray(1);
+            gl.disableVertexAttribArray(0);
+        }
 
         // === Ship ===
         gl.useProgram(solidProg);
@@ -862,22 +1051,43 @@ typeEffect();
     const ctx = navCanvas.getContext('2d');
 
     let w, h;
+    let navResizeObserver = null;
+
     function resize() {
-        const rect = navCanvas.parentElement.getBoundingClientRect();
-        w = navCanvas.width = rect.width;
-        h = navCanvas.height = rect.height;
+        const parent = navCanvas.parentElement;
+        if (!parent) return;
+        const rect = parent.getBoundingClientRect();
+        const newW = Math.max(1, Math.floor(rect.width));
+        const newH = Math.max(1, Math.floor(rect.height));
+        if (newW === w && newH === h) return;
+        w = navCanvas.width = newW;
+        h = navCanvas.height = newH;
     }
+
     resize();
     window.addEventListener('resize', resize);
 
-    const nodeCount = 55;
+    if (typeof ResizeObserver !== 'undefined') {
+        navResizeObserver = new ResizeObserver(() => resize());
+        navResizeObserver.observe(navCanvas.parentElement);
+    }
+
+    // Match the safety used for the hero space canvas.
+    if (document.fonts && document.fonts.ready) {
+        document.fonts.ready.then(resize);
+    }
+    window.addEventListener('load', resize);
+    setTimeout(resize, 100);
+
+    const nodeCount = 28;
     const nodes = [];
     for (let i = 0; i < nodeCount; i++) {
+        const radius = Math.pow(Math.random(), 1.8) * 0.9 + 0.05;
         nodes.push({
             angle: Math.random() * Math.PI * 2,
-            radius: Math.pow(Math.random(), 1.2) * 0.9 + 0.05,
-            size: Math.random() * 2.2 + 0.6,
-            major: Math.random() < 0.15,
+            radius,
+            size: Math.random() * 2 + 0.8,
+            major: Math.random() < 0.18,
             phase: Math.random() * Math.PI * 2,
             hue: 210 + Math.random() * 50,
         });
@@ -886,7 +1096,7 @@ typeEffect();
     const connections = [];
     const cx = 0, cy = 0;
     const rx = 1.0, ry = 0.55;
-    const connectThresh = 0.35;
+    const connectThresh = 0.22;
 
     function toXY(node) {
         return {
@@ -934,32 +1144,48 @@ typeEffect();
 
         ctx.save();
         ctx.globalCompositeOperation = 'source-over';
-        ctx.strokeStyle = 'rgba(0, 255, 255, 0.18)';
-        ctx.lineWidth = 1;
+
+        const gridStep = Math.max(48, Math.floor(w / 12));
+
+        ctx.strokeStyle = 'rgba(0, 255, 65, 0.22)';
+        ctx.lineWidth = 0.8;
         ctx.beginPath();
-        const gridStep = Math.max(28, Math.floor(w / 18));
         for (let x = (midX % gridStep) - gridStep; x < w + gridStep; x += gridStep) {
             ctx.moveTo(x, 0);
-            ctx.lineTo(x + Math.sin(t * 0.25) * 8, h);
+            ctx.lineTo(x + Math.sin(t * 0.25) * 6, h);
         }
         for (let y = (midY % gridStep) - gridStep; y < h + gridStep; y += gridStep) {
             ctx.moveTo(0, y);
-            ctx.lineTo(w, y + Math.cos(t * 0.25) * 5);
+            ctx.lineTo(w, y + Math.cos(t * 0.25) * 4);
         }
         ctx.stroke();
 
-        ctx.strokeStyle = 'rgba(255, 204, 0, 0.16)';
-        ctx.lineWidth = 1;
+        const centerGlow = ctx.createRadialGradient(midX, midY, 0, midX, midY, sx * 0.5);
+        centerGlow.addColorStop(0, 'rgba(0, 255, 80, 0.12)');
+        centerGlow.addColorStop(0.5, 'rgba(0, 255, 80, 0.05)');
+        centerGlow.addColorStop(1, 'rgba(0, 255, 80, 0)');
+        ctx.fillStyle = centerGlow;
         ctx.beginPath();
-        ctx.ellipse(midX, midY, sx * 0.42, sy * 0.42, rotation * 0.35, 0, Math.PI * 2);
-        ctx.ellipse(midX, midY, sx * 0.68, sy * 0.62, -rotation * 0.25, 0, Math.PI * 2);
+        ctx.ellipse(midX, midY, sx * 0.5, sy * 0.5, 0, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.strokeStyle = 'rgba(0, 255, 65, 0.35)';
+        ctx.lineWidth = 1.2;
+        ctx.beginPath();
+        ctx.ellipse(midX, midY, sx * 0.35, sy * 0.30, rotation * 0.3, 0, Math.PI * 2);
+        ctx.stroke();
+
+        ctx.strokeStyle = 'rgba(0, 255, 65, 0.18)';
+        ctx.lineWidth = 0.8;
+        ctx.beginPath();
+        ctx.ellipse(midX, midY, sx * 0.55, sy * 0.48, -rotation * 0.2, 0, Math.PI * 2);
         ctx.stroke();
         ctx.restore();
 
-        ctx.strokeStyle = 'rgba(125, 190, 255, 0.48)';
-        ctx.lineWidth = 1.1;
+        ctx.strokeStyle = 'rgba(80, 220, 160, 0.30)';
+        ctx.lineWidth = 0.8;
         ctx.beginPath();
-        for (const { i, j } of connections) {
+        for (const { i, j, dist } of connections) {
             const a = nodes[i], b = nodes[j];
             const aOsc = Math.sin(t * 1.8 + a.phase) * 0.04;
             const bOsc = Math.sin(t * 1.8 + b.phase) * 0.04;
@@ -983,21 +1209,21 @@ typeEffect();
             const twinkle = 0.55 + 0.45 * Math.sin(timestamp * 0.002 + node.phase);
 
             if (node.major) {
-                ctx.fillStyle = `rgba(255, 220, 120, ${0.70 + twinkle * 0.30})`;
+                ctx.fillStyle = `rgba(255, 220, 120, ${0.50 + twinkle * 0.20})`;
                 ctx.beginPath();
-                ctx.arc(x, y, node.size + 2.2, 0, Math.PI * 2);
+                ctx.arc(x, y, node.size + 1.5, 0, Math.PI * 2);
                 ctx.fill();
-                const glow = ctx.createRadialGradient(x, y, 0, x, y, node.size + 7);
-                glow.addColorStop(0, `rgba(255, 220, 120, ${0.36 + twinkle * 0.20})`);
+                const glow = ctx.createRadialGradient(x, y, 0, x, y, node.size + 5);
+                glow.addColorStop(0, `rgba(255, 220, 120, ${0.24 + twinkle * 0.12})`);
                 glow.addColorStop(1, 'rgba(220, 200, 140, 0)');
                 ctx.fillStyle = glow;
                 ctx.beginPath();
-                ctx.arc(x, y, node.size + 7, 0, Math.PI * 2);
+                ctx.arc(x, y, node.size + 5, 0, Math.PI * 2);
                 ctx.fill();
             } else {
-                ctx.fillStyle = `rgba(180, 225, 255, ${0.55 + twinkle * 0.28})`;
+                ctx.fillStyle = `rgba(120, 220, 180, ${0.40 + twinkle * 0.20})`;
                 ctx.beginPath();
-                ctx.arc(x, y, node.size + 0.4, 0, Math.PI * 2);
+                ctx.arc(x, y, node.size + 0.2, 0, Math.PI * 2);
                 ctx.fill();
             }
         }

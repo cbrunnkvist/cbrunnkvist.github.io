@@ -590,21 +590,25 @@ section {
   display: flex;
   flex-direction: column;
   gap: 8px;
+  font-family: var(--font-terminal);
+  font-size: 20px; /* tuned down for the narrow left column; the long ROLE value + retro font makes wrapping inevitable */
 }
 
 .fe2-info-row {
-  display: flex;
-  justify-content: space-between;
-  font-family: var(--font-terminal);
-  font-size: 23px;
+  display: grid;
+  grid-template-columns: 82px 1fr; /* fixed label column so values align vertically like the old two-column layout; 82px fits the longest labels (STATUS:, NATION:) at this font size */
+  gap: 2px 10px;
+  align-items: start;
 }
 
 .fe2-info-label {
   color: var(--fe2-gray);
+  white-space: nowrap;
 }
 
 .fe2-info-value {
   color: var(--fe2-green);
+  line-height: 1.2;
 }
 
 .status-active {
