@@ -833,7 +833,7 @@ section {
 
 .contact-text {
   font-family: var(--font-terminal);
-  font-size: 28px;
+  font-size: 26px;
   color: var(--fe2-white);
   line-height: 1.6;
 }
