@@ -36,7 +36,7 @@ html {
 }
 
 body {
-  background: var(--fe2-bg);
+  background: transparent;
   color: var(--fe2-green);
   font-family: var(--font-terminal);
   font-size: 26px;
@@ -219,16 +219,15 @@ body {
 .hero-section {
   position: relative;
   min-height: 100vh;
-  overflow: hidden;
 }
 
 .space-canvas {
-  position: absolute;
+  position: fixed;
   top: 0;
   left: 0;
-  width: 100%;
-  height: 100%;
-  z-index: 1;
+  width: 100vw;
+  height: 100vh;
+  z-index: 0;
   display: block;
 }
 

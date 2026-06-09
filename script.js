@@ -68,11 +68,8 @@ typeEffect();
     let resizeObserver = null;
 
     function resize() {
-        const parent = canvas.parentElement;
-        if (!parent) return;
-        const rect = parent.getBoundingClientRect();
-        const newW = Math.max(1, Math.floor(rect.width));
-        const newH = Math.max(1, Math.floor(rect.height || window.innerHeight));
+        const newW = Math.max(1, Math.floor(window.innerWidth));
+        const newH = Math.max(1, Math.floor(window.innerHeight));
         if (newW === W && newH === H) return;
         W = canvas.width = newW;
         H = canvas.height = newH;
@@ -822,15 +819,15 @@ typeEffect();
                 }
             }
 
-            // Occasionally spawn new ones *behind* the ship (negative local Z) with velocity
-            // along the current heading. They will fly forward and visibly pass the ship
-            // (and therefore the external camera's view of it) in the travel direction.
+            // Occasionally spawn new ones *ahead* of the ship (positive local Z) with velocity
+            // opposite to the current heading. They will fly backward and visibly stream past
+            // as the ship speeds forward through space.
             if (travelParticles.length < maxTravelParticles && Math.random() < 0.13) {
                 const spawnCount = (Math.random() < 0.25) ? 2 : 1;
                 for (let k = 0; k < spawnCount; k++) {
-                    // Local offset: behind the tail + some sideways/up jitter.
+                    // Local offset: ahead of the nose + some sideways/up jitter.
                     // Positive local Z = nose direction in the Cobra model.
-                    const localZ = - (2.8 + Math.random() * 3.2); // behind
+                    const localZ = (2.8 + Math.random() * 3.2); // ahead
                     const localX = (Math.random() - 0.5) * 2.4;
                     const localY = (Math.random() - 0.5) * 1.7;
                     const localOff = [localX, localY, localZ];
@@ -848,13 +845,12 @@ typeEffect();
                         shipPos[2] + off[2]
                     ];
 
-                    // Velocity mostly in the ship's forward direction (+ travel dir).
-                    // Slight speed variation + perpendicular noise so they don't all look identical.
+                    // Velocity opposite to ship's heading — particles stream past as ship flies forward.
                     const spd = TRAVEL_SPEED + (Math.random() - 0.5) * 2.2;
                     const vel = [
-                        shipFwd[0] * spd + (Math.random() - 0.5) * 1.8,
-                        shipFwd[1] * spd + (Math.random() - 0.5) * 1.4,
-                        shipFwd[2] * spd + (Math.random() - 0.5) * 1.8
+                        -shipFwd[0] * spd + (Math.random() - 0.5) * 1.8,
+                        -shipFwd[1] * spd + (Math.random() - 0.5) * 1.4,
+                        -shipFwd[2] * spd + (Math.random() - 0.5) * 1.8
                     ];
 
                     travelParticles.push({
