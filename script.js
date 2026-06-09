@@ -20,11 +20,12 @@ updateClock();
 
 // ── Typing Effect ──
 const typingTexts = [
-    'Long-range security operations...',
-    'Penetration testing specialist...',
-    'Vulnerability researcher...',
-    'Digital frontier explorer...',
-    'Elite rank security contractor...'
+    'Platform engineering leader...',
+    'Team coach & technical mentor...',
+    'Infrastructure & systems builder...',
+    'Nano ecosystem developer...',
+    'AI-augmented creator...',
+    'Long-range OSINT analyst...'
 ];
 let textIndex = 0;
 let charIndex = 0;
@@ -268,9 +269,11 @@ typeEffect();
             vec3 n = normalize(vWorldPos);
             vec3 rd = normalize(vWorldPos - uCamPos);
 
-            // Polar ice caps
+            // Polar ice caps - tiny bit of noise for natural irregularity (retro stepped look)
             float absY = abs(n.y);
-            if (absY > 0.82) {
+            float capNoise = (steppedNoise(n * 5.0 + vec3(1.3, 4.7, 2.9)) - 0.5) * 0.03;
+            float capEdge = 0.838 + capNoise;
+            if (absY > capEdge) {
                 vec3 iceColor = vec3(0.82, 0.86, 0.92);
                 float light = dot(n, normalize(uLightDir));
                 float shade = light > 0.1 ? 1.0 : light > -0.3 ? 0.6 : 0.3;
@@ -513,8 +516,8 @@ typeEffect();
             const absY = Math.abs(fcy);
 
             let r, g, b;
-            if (absY > 0.82) {
-                // Polar ice caps
+            if (absY > 0.838) {
+                // Polar ice caps (hard threshold here; shader adds irregularity for rendered planet)
                 r = 0.82 + detail * 0.1; g = 0.85 + detail * 0.08; b = 0.9 + detail * 0.05;
             } else if (continent < 0.40) {
                 // Deep ocean
@@ -768,7 +771,7 @@ typeEffect();
 
         const aspect = W / H;
         const proj = perspective(0.7, aspect, 0.1, 500);
-        const view = lookAt([0, 2, 8], [0, 0, 0], [0, 1, 0]);
+        const view = lookAt([0, 1.8, 7.2], [0, 0, 0], [0, 1, 0]);
         const vp = mul(proj, view);
 
         // ── Update & spawn Elite II-style travel particles (relative to ship) ──
@@ -872,9 +875,10 @@ typeEffect();
                     ppos[b + 0] = p.pos[0];
                     ppos[b + 1] = p.pos[1];
                     ppos[b + 2] = p.pos[2];
-                    // Tiny, with a little life-based size pop and random sparkle
-                    const lifeFade = Math.max(0.3, Math.min(1.0, p.life / 2.8));
-                    psize[i] = (0.55 + Math.random() * 0.65) * lifeFade;
+                    // Slightly boosted size vs distant stars for better (but still subtle) visibility
+                    // as motion particles streak past the ship/camera viewpoint.
+                    const lifeFade = Math.max(0.35, Math.min(1.0, p.life / 2.6));
+                    psize[i] = (0.65 + Math.random() * 0.75) * lifeFade;
                 }
                 gl.bindBuffer(gl.ARRAY_BUFFER, travelPosBuf);
                 gl.bufferData(gl.ARRAY_BUFFER, ppos, gl.DYNAMIC_DRAW);
@@ -899,12 +903,13 @@ typeEffect();
         gl.disableVertexAttribArray(1);
 
         // === Planet (FE2-style fragment shader sphere) ===
-        const planetModel = rotY(I(), time * 0.06);
+        const planetRot = rotY(I(), time * 0.06);
+        const planetModel = mul(translate(I(), 0, 0.25, 0), planetRot);  // small +Y world offset to shift cap vertically up relative to 2D hero text
         const planetMvp = mul(vp, planetModel);
         gl.useProgram(planetProg);
         gl.uniformMatrix4fv(planetU.uMVP, false, vp);
         gl.uniformMatrix4fv(planetU.uModel, false, planetModel);
-        gl.uniform3f(planetU.uCamPos, 0, 2, 8);
+        gl.uniform3f(planetU.uCamPos, 0, 1.55, 7.2);  // adjusted to keep relative cam-to-planet-center the same for shading
         gl.uniform3fv(planetU.uLightDir, lightDir);
         gl.uniform1f(planetU.uRadius, 1.0);
         gl.bindBuffer(gl.ARRAY_BUFFER, planetPosBuf);
