@@ -1,34 +1,39 @@
 ---
+created_at: 2026-06-18
+modified_at: 2026-06-18
 name: Conny Brunnkvist
-role: Software Eng. Leader & Security Practitioner
+role: Principal Software Engineer · Platform, Automation & Security
 status: ACTIVE
 experience: 20+ Years
 base: Siem Reap, Cambodia
 nation: Swedish
 skills:
-  - name: PLATFORM ENGINEERING
-    value: 90%
-  - name: CYBERSECURITY & OSINT
-    value: 79%
-  - name: BIG DATA & STREAMING
-    value: 85%
+  - name: LINUX, DOCKER & AUTOMATION
+    value: 96%
+  - name: SOFTWARE ARCHITECTURE
+    value: 94%
   - name: FULL-STACK DEVELOPMENT
-    value: 93%
+    value: 92%
+  - name: PLATFORM & DEVELOPER TOOLING
+    value: 90%
   - name: QA AUTOMATION & E2E
     value: 88%
-  - name: CI/CD & DEVOPS
-    value: 95%
+  - name: BIG DATA & STREAMING
+    value: 84%
+  - name: SECURITY RESEARCH & OSINT
+    value: 76%
   - name: FREE SOFTWARE HACKER ETHIC
     value: 100%
 tags:
   - profile
-  - leader
   - security
 ---
-Results-driven Software Engineering Leader, Architect, and Security Practitioner with over 20 years of international experience in infrastructure, platforms, full-stack development, QA automation, and cybersecurity.
+Software Engineering Leader, Architect, and pragmatic systems builder with deep international experience across infrastructure, platforms, full-stack development, QA automation, data pipelines, and security-minded engineering.
 
-20 years, 7 industries, zero pigeonholes — built and scaled systems across **genomics**, **social media**, **hospitality**, **travel**, and **cryptocurrency**.
+Two decades of production systems, seven industries, zero pigeonholes — I have built and scaled software across **genomics**, **social media**, **hospitality**, **travel**, and **cryptocurrency**, moving comfortably between architecture, hands-on implementation, automation, troubleshooting, and technical leadership.
 
-That includes 5 years as Tech Lead at **Agoda**, where I designed large-scale big data pipelines, led key internal web applications, pioneered organization-wide adoption of new technology stacks and modern testing methodologies, and raised CI infrastructure performance and reliability standards organization-wide.
+I gravitate toward the full depth of the stack: Linux infrastructure, Docker internals, deployment pipelines, reproducible environments, automation, and the hands-dirty engineering that keeps production running and teams unblocked. But I'm just as comfortable sitting across from users who've given up explaining the problem to engineering — asking the questions nobody's asking, saying what the room already knows, and pulling out the requirements that were never written down. If it crosses boundaries between disciplines, I've probably already been there.
 
-Currently operating independently via **CasualSecurityInc** — conducting cybersecurity assessments, OSINT investigations, and contributing to open-source privacy-enhancing technologies in the Nano (XNO) ecosystem. Heavy adopter of AI-augmented development.
+At **Agoda**, I spent 5 years as Tech Lead across Partner Services, QA, and Data Science Engineering: designing big data pipelines, leading internal web applications, driving org-wide adoption of new API and E2E testing practices, and improving CI/CD, test quality, and developer productivity.
+
+Currently sharpening the blade through **CasualSecurityInc** — cybersecurity assessments, OSINT investigations, offensive testing, and open-source protocol work in the Nano/XNO ecosystem. AI-augmented development is my daily engineering loop. I'm looking for the right team to bring this full stack of skills to.
