@@ -1,0 +1,28 @@
+{
+  "frontMatter.content.pageFolders": [
+    {
+      "title": "Project Files",
+      "path": "[[workspace]]/content/projects"
+    },
+    {
+      "title": "Mission Logs",
+      "path": "[[workspace]]/content/posts"
+    },
+    {
+      "title": "Static Pages",
+      "path": "[[workspace]]/content/about"
+    }
+  ],
+  "frontMatter.content.defaultFileType": "md",
+  "frontMatter.content.draftField": {
+    "name": "draft",
+    "type": "boolean"
+  },
+  "frontMatter.dashboard.content.cardTags": "tags",
+  "frontMatter.dashboard.content.card.fields.description": "description",
+  "frontMatter.dashboard.content.card.fields.title": "title",
+  "frontMatter.file.slugSeparator": "-",
+  "frontMatter.framework.id": "other",
+  "frontMatter.framework.startCommand": "uv run build.py",
+  "frontMatter.git.enabled": false
+}

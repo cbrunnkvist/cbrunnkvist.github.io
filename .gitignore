@@ -6,3 +6,19 @@ frontier-42pct-fonts.png
 frontier-webgl*.png
 !commander-mugshot.png
 .DS_Store
+__pycache__/
+
+# Personal docs (not part of site build)
+Base Cover Letter - Conny Brunnkvist.md
+CBrunnkvist CV.md
+
+# Unused assets
+intro.webp
+map grid.webp
+
+# Generated site output. GitHub Pages builds this as an Actions artifact.
+/dist/
+/projects/
+/log/
+/tags/
+/tag-index.json

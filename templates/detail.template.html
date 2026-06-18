@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ title }} | Conny Brunnkvist</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=VT323&family=Share+Tech+Mono&family=Noto+Sans+JP:wght@400;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="../../styles.css?v=12">
+</head>
+<body>
+    <canvas id="spaceCanvas" class="space-canvas"></canvas>
+
+    <div class="crt-overlay">
+        <div class="scanlines"></div>
+        <div class="crt-flicker"></div>
+        <div class="vignette"></div>
+    </div>
+
+    <div class="status-bar top-bar">
+        <div class="status-left">
+            <span class="status-item">HULL: 100%</span>
+            <span class="status-item">SHIELDS: 100%</span>
+        </div>
+        <div class="status-center">
+            <span class="status-item blink status-item-jp" lang="ja">・電脳侍</span>
+        </div>
+        <div class="status-right">
+            <span class="status-item" id="clock">00:00:00</span>
+            <span class="status-item">SEC: ALPHA</span>
+        </div>
+    </div>
+
+    <nav class="main-nav">
+        <canvas id="navCanvas" class="nav-canvas"></canvas>
+        <div class="nav-brand">
+            <span class="brand-icon">◈</span>
+            <span class="brand-text">CasualSecurityInc</span>
+        </div>
+        <ul class="nav-links">
+            <li><a href="../../" class="nav-link">[HOME]</a></li>
+            <li><a href="../../#systems" class="nav-link">[SYSTEMS]</a></li>
+            <li><a href="../../#log" class="nav-link">[LOG]</a></li>
+        </ul>
+    </nav>
+
+    <main class="detail-section">
+        <a href="../../" class="detail-back-link">&lt;&lt; RETURN TO SECTOR MAP</a>
+
+        <article class="fe2-panel detail-panel">
+            <div class="fe2-panel-header">
+                <span class="fe2-header-title">{{ heading }}</span>
+                <span class="fe2-header-line">═══════════════════════</span>
+            </div>
+
+            <div class="detail-body">
+                <div class="detail-meta-list">
+                    {{ meta }}
+                </div>
+
+                <div class="detail-subtitle">{{ subtitle }}</div>
+
+                <div class="markdown-body">
+                    {{ body }}
+                </div>
+
+                <div class="content-tags detail-tags">
+                    {{ tags }}
+                </div>
+            </div>
+        </article>
+    </main>
+
+    <div class="status-bar bottom-bar">
+        <div class="status-left">
+            <span class="status-item">FUEL: 79%</span>
+            <span class="status-item">CARGO: 3 PAX</span>
+        </div>
+        <div class="status-center">
+            <span class="status-item">CLNKR: ONLINE</span>
+            <span class="status-item">VER: 2.4.1</span>
+        </div>
+        <div class="status-right">
+            <span class="status-item">REF: SOL</span>
+            <span class="status-item">RNG: 0.0 LY</span>
+        </div>
+    </div>
+
+    <script src="../../script.js?v=8"></script>
+</body>
+</html>
