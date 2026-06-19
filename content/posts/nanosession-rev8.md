@@ -1,6 +1,8 @@
 ---
 title: x402.NanoSession Rev8 + ows-nano
 date: 3309-05-24
+created_at: 2026-06-18
+modified_at: 2026-06-18
 type: MISSION
 excerpt: Completed a Rev8 x402 binding for feeless Nano micropayments and shipped the supporting ows-nano Rust crate.
 tags:

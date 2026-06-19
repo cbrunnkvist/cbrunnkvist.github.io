@@ -1,6 +1,8 @@
 ---
 title: OpenRai nano-core + RaiFlow Runtime
 date: 3309-06-02
+created_at: 2026-06-18
+modified_at: 2026-06-18
 type: DISCOVERY
 excerpt: Released typed Nano protocol primitives and paired them with payment detection and settlement runtime work.
 tags:

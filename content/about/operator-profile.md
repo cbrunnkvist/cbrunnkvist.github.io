@@ -1,5 +1,5 @@
 ---
-created_at: 2026-06-18
+created_at: 2026-05-08
 modified_at: 2026-06-18
 name: Conny Brunnkvist
 role: Principal Software Engineer · Platform, Automation & Security
@@ -36,4 +36,4 @@ I gravitate toward the full depth of the stack: Linux infrastructure, Docker int
 
 At **Agoda**, I spent 5 years as Tech Lead across Partner Services, QA, and Data Science Engineering: designing big data pipelines, leading internal web applications, driving org-wide adoption of new API and E2E testing practices, and improving CI/CD, test quality, and developer productivity.
 
-Currently sharpening the blade through **CasualSecurityInc** — cybersecurity assessments, OSINT investigations, offensive testing, and open-source protocol work in the Nano/XNO ecosystem. AI-augmented development is my daily engineering loop. I'm looking for the right team to bring this full stack of skills to.
+Currently sharpening the blade through **CasualSecurityInc** — cybersecurity assessments, OSINT investigations, offensive testing, and open-source protocol work in the Nano (XNO) ecosystem. AI-augmented development is my daily engineering loop. I'm looking for the right team to bring this full stack of skills to.

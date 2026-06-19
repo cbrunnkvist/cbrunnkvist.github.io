@@ -1,6 +1,8 @@
 ---
 title: openrai-nano-core
 description: Typed Nano protocol primitives and runtime foundations for reliable payment and wallet software.
+created_at: 2026-06-18
+modified_at: 2026-06-18
 order: 20
 system_name: SCANNER ARRAY
 icon: 🔍

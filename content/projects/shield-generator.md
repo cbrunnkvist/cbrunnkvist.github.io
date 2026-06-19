@@ -1,6 +1,8 @@
 ---
 title: xno-skills
 description: Agent-facing Nano wallet operations, MCP tools, and CLI workflows on top of OWS key custody.
+created_at: 2026-06-18
+modified_at: 2026-06-18
 order: 10
 system_name: SHIELD GENERATOR
 icon: 🛡

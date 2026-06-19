@@ -174,6 +174,14 @@ def make_handler(hub: ReloadHub) -> type[SimpleHTTPRequestHandler]:
     return DevHandler
 
 
+class DevHTTPServer(ThreadingHTTPServer):
+    def handle_error(self, request: object, client_address: tuple[str, int]) -> None:
+        exc_type, exc, _traceback = sys.exc_info()
+        if exc_type and issubclass(exc_type, (BrokenPipeError, ConnectionAbortedError, ConnectionResetError)):
+            return
+        super().handle_error(request, client_address)
+
+
 class MemoryFile:
     def __init__(self, data: bytes) -> None:
         self._data = data
@@ -204,7 +212,7 @@ def main() -> int:
     watcher = threading.Thread(target=watch_sources, args=(hub, stop, args.interval), daemon=True)
     watcher.start()
 
-    server = ThreadingHTTPServer((args.host, args.port), make_handler(hub))
+    server = DevHTTPServer((args.host, args.port), make_handler(hub))
 
     print(f"[dev] serving dist/ at http://{args.host}:{args.port}/")
     try:

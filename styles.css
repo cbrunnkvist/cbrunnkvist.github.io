@@ -17,6 +17,7 @@
   --fe2-white: #e0e0e0;
   --fe2-gray: #888888;
   --fe2-dark-gray: #444444;
+  --top-status-height: 38px;
   
   --font-pixel: 'Press Start 2P', monospace;
   --font-terminal: 'VT323', monospace;
@@ -114,6 +115,7 @@ a {
 
 .top-bar {
   border-bottom: 2px solid var(--fe2-green);
+  min-height: var(--top-status-height);
   position: sticky;
   top: 0;
 }
@@ -159,7 +161,7 @@ a {
   justify-content: space-between;
   align-items: center;
   position: sticky;
-  top: 24px;
+  top: var(--top-status-height);
   z-index: 50;
   overflow: hidden;
 }
@@ -285,7 +287,44 @@ a {
 .status-item-jp {
   font-family: 'Noto Sans JP', sans-serif;
   font-weight: 700;
-  font-size: 14px;
+  font-size: 18px;
+  position: relative;
+  text-shadow:
+    1px 0 0 var(--fe2-cyan),
+    -1px 0 0 var(--fe2-red),
+    0 0 8px rgba(0, 255, 65, 0.55);
+  animation: blink 1s step-end infinite, jp-glitch 2.6s steps(1, end) infinite;
+}
+
+@keyframes jp-glitch {
+  0%, 88%, 100% {
+    transform: translate(0, 0);
+    text-shadow:
+      1px 0 0 var(--fe2-cyan),
+      -1px 0 0 var(--fe2-red),
+      0 0 8px rgba(0, 255, 65, 0.55);
+  }
+  90% {
+    transform: translate(-1px, 0);
+    text-shadow:
+      2px 0 0 var(--fe2-cyan),
+      -2px 0 0 var(--fe2-red),
+      0 0 10px rgba(255, 204, 0, 0.65);
+  }
+  92% {
+    transform: translate(1px, -1px);
+    text-shadow:
+      -2px 0 0 var(--fe2-cyan),
+      2px 0 0 var(--fe2-red),
+      0 0 10px rgba(0, 255, 255, 0.65);
+  }
+  94% {
+    transform: translate(0, 1px);
+    text-shadow:
+      1px 1px 0 var(--fe2-red),
+      -1px -1px 0 var(--fe2-cyan),
+      0 0 8px rgba(0, 255, 65, 0.55);
+  }
 }
 
 .hero-title {
@@ -473,6 +512,18 @@ section {
   font-family: var(--font-terminal);
   font-size: 20px;
   letter-spacing: 2px;
+}
+
+.section-action {
+  color: var(--fe2-yellow);
+  font-family: var(--font-pixel);
+  font-size: 10px;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.section-action:hover {
+  color: var(--fe2-cyan);
 }
 
 /* ── About Section - Frontier: Elite II Style ── */
@@ -784,6 +835,37 @@ section {
   line-height: 1.5;
 }
 
+.card-byline,
+.detail-byline,
+.detail-footer {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 14px;
+  font-family: var(--font-tech);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.card-byline {
+  color: rgba(255, 170, 0, 0.58);
+  font-size: 12px;
+  padding: 0 16px 14px;
+}
+
+.card-byline-item,
+.detail-byline-item,
+.detail-footer-item {
+  align-items: baseline;
+  display: inline-flex;
+  gap: 5px;
+}
+
+.card-byline-label,
+.detail-byline-label,
+.detail-footer-label {
+  color: var(--fe2-gray);
+}
+
 .system-stats {
   display: flex;
   gap: 12px;
@@ -921,6 +1003,30 @@ section {
   padding: 24px;
 }
 
+.collection-section {
+  max-width: 1120px;
+}
+
+.collection-intro {
+  border-bottom: 1px solid var(--fe2-panel-light);
+  padding: 16px 8px 0;
+}
+
+.collection-list {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 24px;
+}
+
+.collection-list > .systems-grid {
+  width: 100%;
+}
+
+.collection-list > .log-entry:last-child {
+  margin-bottom: 0;
+}
+
 .detail-meta-list {
   background: rgba(0, 0, 0, 0.25);
   border: 1px solid var(--fe2-panel-light);
@@ -954,7 +1060,15 @@ section {
   font-family: var(--font-terminal);
   font-size: 24px;
   line-height: 1.4;
-  margin-bottom: 18px;
+  margin-bottom: 10px;
+}
+
+.detail-byline {
+  border-bottom: 1px solid rgba(255, 170, 0, 0.15);
+  color: rgba(255, 170, 0, 0.72);
+  font-size: 13px;
+  margin-bottom: 22px;
+  padding-bottom: 14px;
 }
 
 .markdown-body {
@@ -1056,6 +1170,15 @@ section {
   border-top: 1px solid var(--fe2-panel-light);
   margin-top: 24px;
   padding: 18px 0 0;
+}
+
+.detail-footer {
+  justify-content: flex-end;
+  margin-top: 20px;
+  padding-top: 12px;
+  border-top: 1px solid rgba(255, 170, 0, 0.15);
+  font-size: 11px;
+  color: rgba(255, 170, 0, 0.42);
 }
 
 .tag-index-entry {
@@ -1173,6 +1296,14 @@ section {
   .main-nav {
     flex-direction: column;
     gap: 12px;
+  }
+
+  .section-header {
+    flex-wrap: wrap;
+  }
+
+  .section-action {
+    width: 100%;
   }
 
   .hero-layout {

@@ -40,8 +40,8 @@
         </div>
         <ul class="nav-links">
             <li><a href="../../" class="nav-link">[HOME]</a></li>
-            <li><a href="../../#systems" class="nav-link">[SYSTEMS]</a></li>
-            <li><a href="../../#log" class="nav-link">[LOG]</a></li>
+            <li><a href="../../projects/" class="nav-link">[PROJECTS]</a></li>
+            <li><a href="../../log/" class="nav-link">[LOG]</a></li>
         </ul>
     </nav>
 
@@ -60,6 +60,7 @@
                 </div>
 
                 <div class="detail-subtitle">{{ subtitle }}</div>
+                {{ byline }}
 
                 <div class="markdown-body">
                     {{ body }}
@@ -68,6 +69,8 @@
                 <div class="content-tags detail-tags">
                     {{ tags }}
                 </div>
+
+                {{ footer }}
             </div>
         </article>
     </main>

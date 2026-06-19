@@ -133,6 +133,45 @@ def truncate(text: str, limit: int) -> str:
     return f"{clipped}..."
 
 
+def lifecycle_values(meta: dict[str, Any]) -> list[tuple[str, str]]:
+    items = []
+    for field, label in [("created_at", "CREATED"), ("modified_at", "MODIFIED")]:
+        value = meta.get(field)
+        if value:
+            items.append((label, str(value)))
+    return items
+
+
+def lifecycle_items(entry: Entry) -> list[tuple[str, str]]:
+    return lifecycle_values(entry.meta)
+
+
+def lifecycle_markup(items: list[tuple[str, str]], class_name: str) -> str:
+    if not items:
+        return ""
+
+    parts = []
+    for label, value in items:
+        safe_value = escape(value)
+        parts.append(
+            f"""<span class="{class_name}-item">
+                    <span class="{class_name}-label">{label}</span>
+                    <time datetime="{safe_value}">{safe_value}</time>
+                </span>"""
+        )
+
+    return f'<div class="{class_name}">{"".join(parts)}</div>'
+
+
+def lifecycle_html(entry: Entry, class_name: str) -> str:
+    return lifecycle_markup(lifecycle_items(entry), class_name)
+
+
+def lifecycle_footer_html(entry: Entry) -> str:
+    footer = lifecycle_html(entry, "detail-footer")
+    return f"<footer>{footer}</footer>" if footer else ""
+
+
 def tags_html(tags: list[str], root_prefix: str = "") -> str:
     parts = []
     for tag in tags:
@@ -150,6 +189,10 @@ def slugify(value: str) -> str:
 def status_class(status: str) -> str:
     normalized = re.sub(r"[^a-z0-9]+", "-", status.lower()).strip("-")
     return normalized or "online"
+
+
+def href_for(entry: Entry, root_prefix: str = "") -> str:
+    return f"{root_prefix}{entry.url}"
 
 
 def build_about(tag_index: dict[str, list[dict[str, Any]]]) -> tuple[str, str, str]:
@@ -210,12 +253,7 @@ def build_about(tag_index: dict[str, list[dict[str, Any]]]) -> tuple[str, str, s
     return "\n".join(info_parts), "\n".join(detail_parts), "\n".join(skill_parts)
 
 
-def build_projects(tag_index: dict[str, list[dict[str, Any]]]) -> tuple[str, list[Entry]]:
-    projects = load_entries("projects", "projects")
-    for project in projects:
-        require(project, "title", "system_name", "icon", "status", "tags")
-
-    projects.sort(key=lambda item: int(item.meta.get("order", 999)))
+def project_cards_html(projects: list[Entry], root_prefix: str = "") -> str:
     card_parts = []
     for project in projects:
         system_name = str(project.meta["system_name"])
@@ -224,54 +262,76 @@ def build_projects(tag_index: dict[str, list[dict[str, Any]]]) -> tuple[str, lis
         stats_html = "\n".join(
             f'<span class="sys-stat">{escape(str(stat))}</span>' for stat in stats
         )
+        href = href_for(project, root_prefix)
         card_parts.append(
             f"""<article class="system-card">
                 <div class="system-header">
                     <span class="system-icon">{escape(str(project.meta["icon"]))}</span>
-                    <h3 class="system-name"><a href="{project.url}">{escape(system_name)}</a></h3>
+                    <h3 class="system-name"><a href="{href}">{escape(system_name)}</a></h3>
                     <span class="system-status {status_class(status)}">{escape(status)}</span>
                 </div>
                 <p class="system-desc">{escape(first_paragraph(project))}</p>
+                {lifecycle_html(project, "card-byline")}
                 <div class="system-stats">
                     {stats_html}
                 </div>
                 <div class="content-tags">
-                    {tags_html(project.tags)}
+                    {tags_html(project.tags, root_prefix)}
                 </div>
-                <a class="intel-link" href="{project.url}">OPEN PROJECT FILE</a>
+                <a class="intel-link" href="{href}">OPEN PROJECT FILE</a>
             </article>"""
         )
-        index_tags(tag_index, project, f"{system_name}: {project.title}")
 
-    return "\n".join(card_parts), projects
+    return "\n".join(card_parts)
 
 
-def build_posts(tag_index: dict[str, list[dict[str, Any]]]) -> tuple[str, str, list[Entry]]:
-    posts = load_entries("posts", "log")
-    for post in posts:
-        require(post, "title", "date", "type", "tags")
-
-    posts.sort(key=lambda item: str(item.meta["date"]), reverse=True)
+def post_cards_html(posts: list[Entry], root_prefix: str = "") -> str:
     log_parts = []
     for post in posts:
+        href = href_for(post, root_prefix)
         log_parts.append(
             f"""<article class="log-entry">
                 <div class="log-header">
                     <span class="log-date">{escape(str(post.meta["date"]))}</span>
                     <span class="log-type">[{escape(str(post.meta["type"]))}]</span>
                 </div>
-                <h3 class="log-title"><a href="{post.url}">{escape(post.title)}</a></h3>
+                <h3 class="log-title"><a href="{href}">{escape(post.title)}</a></h3>
+                {lifecycle_html(post, "card-byline")}
                 <p class="log-content">{escape(first_paragraph(post))}</p>
                 <div class="content-tags">
-                    {tags_html(post.tags)}
+                    {tags_html(post.tags, root_prefix)}
                 </div>
-                <a class="intel-link" href="{post.url}">READ LOG ENTRY</a>
+                <a class="intel-link" href="{href}">READ LOG ENTRY</a>
             </article>"""
         )
+
+    return "\n".join(log_parts)
+
+
+def build_projects(tag_index: dict[str, list[dict[str, Any]]]) -> list[Entry]:
+    projects = load_entries("projects", "projects")
+    for project in projects:
+        require(project, "title", "system_name", "icon", "status", "tags")
+
+    projects.sort(key=lambda item: int(item.meta.get("order", 999)))
+    for project in projects:
+        system_name = str(project.meta["system_name"])
+        index_tags(tag_index, project, f"{system_name}: {project.title}")
+
+    return projects
+
+
+def build_posts(tag_index: dict[str, list[dict[str, Any]]]) -> tuple[str, list[Entry]]:
+    posts = load_entries("posts", "log")
+    for post in posts:
+        require(post, "title", "date", "type", "tags")
+
+    posts.sort(key=lambda item: str(item.meta["date"]), reverse=True)
+    for post in posts:
         index_tags(tag_index, post, post.title)
 
     sidebar_parts = []
-    for post in posts[:4]:
+    for post in posts[:3]:
         sidebar_parts.append(
             f"""<div class="news-item">
                         <span class="news-date">{escape(str(post.meta["date"]))}</span>
@@ -279,7 +339,7 @@ def build_posts(tag_index: dict[str, list[dict[str, Any]]]) -> tuple[str, str, l
                     </div>"""
         )
 
-    return "\n".join(log_parts), "\n".join(sidebar_parts), posts
+    return "\n".join(sidebar_parts), posts
 
 
 def index_tags(tag_index: dict[str, list[dict[str, Any]]], entry: Entry, title: str) -> None:
@@ -290,6 +350,8 @@ def index_tags(tag_index: dict[str, list[dict[str, Any]]], entry: Entry, title: 
                 "category": entry.category,
                 "url": entry.url,
                 "date": str(entry.meta["date"]) if entry.meta.get("date") else None,
+                "created_at": str(entry.meta["created_at"]) if entry.meta.get("created_at") else None,
+                "modified_at": str(entry.meta["modified_at"]) if entry.meta.get("modified_at") else None,
                 "description": first_paragraph(entry),
             }
         )
@@ -325,8 +387,32 @@ def render_content_page(entry: Entry, template_name: str, output_path: Path) -> 
             "heading": escape(str(entry.meta.get("system_name") or entry.title)),
             "subtitle": escape(str(entry.meta.get("description") or entry.meta.get("excerpt") or "")),
             "meta": "\n".join(meta_rows),
+            "byline": lifecycle_html(entry, "detail-byline"),
             "body": entry.body_html,
             "tags": tags_html(entry.tags, "../../"),
+            "footer": lifecycle_footer_html(entry),
+        },
+    )
+    write_text(output_path, html)
+
+
+def render_collection_page(
+    *,
+    title: str,
+    heading: str,
+    intro: str,
+    entries: str,
+    output_path: Path,
+    root_prefix: str = "../",
+) -> None:
+    html = render_template(
+        load_template("collection.template.html"),
+        {
+            "title": escape(title),
+            "heading": escape(heading),
+            "intro": escape(intro),
+            "entries": entries,
+            "root_prefix": root_prefix,
         },
     )
     write_text(output_path, html)
@@ -343,6 +429,7 @@ def render_tag_pages(tag_index: dict[str, list[dict[str, Any]]]) -> None:
         item_html = []
         for item in items:
             date = f'<span class="log-date">{escape(str(item["date"]))}</span>' if item.get("date") else ""
+            byline = lifecycle_markup(lifecycle_values(item), "card-byline")
             item_html.append(
                 f"""<article class="tag-index-entry">
                     <div class="log-header">
@@ -350,6 +437,7 @@ def render_tag_pages(tag_index: dict[str, list[dict[str, Any]]]) -> None:
                         <span class="log-type">[{escape(str(item["category"]).upper())}]</span>
                     </div>
                     <h2 class="log-title"><a href="../../{escape(str(item["url"]))}">{escape(str(item["title"]))}</a></h2>
+                    {byline}
                     <p class="log-content">{escape(str(item["description"]))}</p>
                 </article>"""
             )
@@ -399,8 +487,8 @@ def build() -> None:
     tag_index: dict[str, list[dict[str, Any]]] = {}
 
     about_info, about_details, about_skills = build_about(tag_index)
-    systems_grid, projects = build_projects(tag_index)
-    logs, latest_intel, posts = build_posts(tag_index)
+    projects = build_projects(tag_index)
+    latest_intel, posts = build_posts(tag_index)
 
     clean_generated_dirs()
 
@@ -408,6 +496,20 @@ def build() -> None:
         render_content_page(project, "detail.template.html", OUT_DIR / "projects" / project.slug / "index.html")
     for post in posts:
         render_content_page(post, "detail.template.html", OUT_DIR / "log" / post.slug / "index.html")
+    render_collection_page(
+        title="Mission Log",
+        heading="MISSION LOG",
+        intro="Full archive of operational notes, release logs, protocol work, and field reports.",
+        entries=post_cards_html(posts, "../"),
+        output_path=OUT_DIR / "log" / "index.html",
+    )
+    render_collection_page(
+        title="Project Files",
+        heading="PROJECT FILES",
+        intro="Complete system manifest, ordered by current operational priority.",
+        entries=f'<div class="systems-grid">{project_cards_html(projects, "../")}</div>',
+        output_path=OUT_DIR / "projects" / "index.html",
+    )
     render_tag_pages(tag_index)
     copy_static_assets()
 
@@ -417,8 +519,8 @@ def build() -> None:
             "about_info": about_info,
             "about_details": about_details,
             "about_skills": about_skills,
-            "systems_grid": systems_grid,
-            "logs": logs,
+            "systems_grid": project_cards_html(projects[:3]),
+            "logs": post_cards_html(posts[:3]),
             "latest_intel": latest_intel,
         },
     )

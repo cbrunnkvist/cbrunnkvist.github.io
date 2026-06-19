@@ -3,11 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{{ title }} | Tag Index | Conny Brunnkvist</title>
+    <title>{{ title }} | Conny Brunnkvist</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=VT323&family=Share+Tech+Mono&family=Noto+Sans+JP:wght@400;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="../../styles.css?v=12">
+    <link rel="stylesheet" href="{{ root_prefix }}styles.css?v=12">
 </head>
 <body>
     <canvas id="spaceCanvas" class="space-canvas"></canvas>
@@ -39,24 +39,27 @@
             <span class="brand-text">CasualSecurityInc</span>
         </div>
         <ul class="nav-links">
-            <li><a href="../../" class="nav-link">[HOME]</a></li>
-            <li><a href="../../projects/" class="nav-link">[PROJECTS]</a></li>
-            <li><a href="../../log/" class="nav-link">[LOG]</a></li>
+            <li><a href="{{ root_prefix }}" class="nav-link">[HOME]</a></li>
+            <li><a href="{{ root_prefix }}projects/" class="nav-link">[PROJECTS]</a></li>
+            <li><a href="{{ root_prefix }}log/" class="nav-link">[LOG]</a></li>
         </ul>
     </nav>
 
-    <main class="detail-section">
-        <a href="../../" class="detail-back-link">&lt;&lt; RETURN TO SECTOR MAP</a>
+    <main class="detail-section collection-section">
+        <a href="{{ root_prefix }}" class="detail-back-link">&lt;&lt; RETURN TO SECTOR MAP</a>
 
-        <section class="fe2-panel detail-panel">
+        <div class="fe2-panel detail-panel">
             <div class="fe2-panel-header">
                 <span class="fe2-header-title">{{ heading }}</span>
                 <span class="fe2-header-line">═══════════════════════</span>
             </div>
-            <div class="tag-index-list">
+            <div class="collection-intro">
+                <p class="log-content">{{ intro }}</p>
+            </div>
+            <div class="collection-list">
                 {{ entries }}
             </div>
-        </section>
+        </div>
     </main>
 
     <div class="status-bar bottom-bar">
@@ -74,6 +77,6 @@
         </div>
     </div>
 
-    <script src="../../script.js?v=8"></script>
+    <script src="{{ root_prefix }}script.js?v=8"></script>
 </body>
 </html>

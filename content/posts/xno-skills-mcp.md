@@ -1,6 +1,8 @@
 ---
 title: xno-skills v4.3.0 + MCP Consolidation
 date: 3309-06-08
+created_at: 2026-06-18
+modified_at: 2026-06-18
 type: UPDATE
 excerpt: Shipped the unified Nano skill, MCP server, and CLI on top of OWS for local-first agent wallet operations.
 tags:
