@@ -7,7 +7,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=VT323&family=Share+Tech+Mono&family=Noto+Sans+JP:wght@400;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="styles.css?v=11">
+    <link rel="stylesheet" href="styles.css?v=14">
 </head>
 <body>
     <!-- Full-viewport space background (behind everything) -->
@@ -38,12 +38,11 @@
     <!-- Navigation -->
     <nav class="main-nav">
         <canvas id="navCanvas" class="nav-canvas"></canvas>
-        <div class="nav-brand">
+        <a href="/" class="nav-brand" aria-label="CasualSecurityInc home">
             <span class="brand-icon">◈</span>
             <span class="brand-text">CasualSecurityInc</span>
-        </div>
+        </a>
         <ul class="nav-links">
-            <li><a href="/" class="nav-link active">[HOME]</a></li>
             <li><a href="#about" class="nav-link">[ABOUT]</a></li>
             <li><a href="#systems" class="nav-link">[SYSTEMS]</a></li>
             <li><a href="#log" class="nav-link">[LOG]</a></li>
@@ -90,16 +89,16 @@
                 </div>
                 <div class="news-feed">
                     <div class="news-item">
+                        <span class="news-date">3309-06-21</span>
+                        <p class="news-text"><a href="log/how-this-site-works/">A tour of the small static build system behind this Frontier-styled personal site.</a></p>
+                    </div>
+<div class="news-item">
                         <span class="news-date">3309-06-08</span>
                         <p class="news-text"><a href="log/xno-skills-mcp/">Shipped the unified Nano skill, MCP server, and CLI on top of OWS for local-first agent wallet operations.</a></p>
                     </div>
 <div class="news-item">
                         <span class="news-date">3309-06-02</span>
                         <p class="news-text"><a href="log/openrai-nanocore/">Released typed Nano protocol primitives and paired them with payment detection and settlement runtime work.</a></p>
-                    </div>
-<div class="news-item">
-                        <span class="news-date">3309-05-24</span>
-                        <p class="news-text"><a href="log/nanosession-rev8/">Completed a Rev8 x402 binding for feeless Nano micropayments and shipped the supporting ows-nano Rust crate.</a></p>
                     </div>
                 </div>
             </aside>
@@ -321,6 +320,29 @@
         <div class="log-entries">
             <article class="log-entry">
                 <div class="log-header">
+                    <span class="log-date">3309-06-21</span>
+                    <span class="log-type">[FIELD NOTE]</span>
+                </div>
+                <h3 class="log-title"><a href="log/how-this-site-works/">How This Site Works</a></h3>
+                <div class="card-byline"><span class="card-byline-item">
+                    <span class="card-byline-label">CREATED</span>
+                    <time datetime="2026-06-21">2026-06-21</time>
+                </span><span class="card-byline-item">
+                    <span class="card-byline-label">MODIFIED</span>
+                    <time datetime="2026-06-21">2026-06-21</time>
+                </span></div>
+                <p class="log-content">A tour of the small static build system behind this Frontier-styled personal site.</p>
+                <div class="content-tags">
+                    <a class="tag-chip" href="tags/site/">#site</a>
+<a class="tag-chip" href="tags/static/">#static</a>
+<a class="tag-chip" href="tags/markdown/">#markdown</a>
+<a class="tag-chip" href="tags/python/">#python</a>
+<a class="tag-chip" href="tags/design/">#design</a>
+                </div>
+                <a class="intel-link" href="log/how-this-site-works/">READ LOG ENTRY</a>
+            </article>
+<article class="log-entry">
+                <div class="log-header">
                     <span class="log-date">3309-06-08</span>
                     <span class="log-type">[UPDATE]</span>
                 </div>
@@ -362,28 +384,6 @@
 <a class="tag-chip" href="tags/typescript/">#typescript</a>
                 </div>
                 <a class="intel-link" href="log/openrai-nanocore/">READ LOG ENTRY</a>
-            </article>
-<article class="log-entry">
-                <div class="log-header">
-                    <span class="log-date">3309-05-24</span>
-                    <span class="log-type">[MISSION]</span>
-                </div>
-                <h3 class="log-title"><a href="log/nanosession-rev8/">x402.NanoSession Rev8 + ows-nano</a></h3>
-                <div class="card-byline"><span class="card-byline-item">
-                    <span class="card-byline-label">CREATED</span>
-                    <time datetime="2026-06-18">2026-06-18</time>
-                </span><span class="card-byline-item">
-                    <span class="card-byline-label">MODIFIED</span>
-                    <time datetime="2026-06-18">2026-06-18</time>
-                </span></div>
-                <p class="log-content">Completed a Rev8 x402 binding for feeless Nano micropayments and shipped the supporting ows-nano Rust crate.</p>
-                <div class="content-tags">
-                    <a class="tag-chip" href="tags/payments/">#payments</a>
-<a class="tag-chip" href="tags/microtransactions/">#microtransactions</a>
-<a class="tag-chip" href="tags/rust/">#rust</a>
-<a class="tag-chip" href="tags/openrai/">#openrai</a>
-                </div>
-                <a class="intel-link" href="log/nanosession-rev8/">READ LOG ENTRY</a>
             </article>
         </div>
     </section>

@@ -1,6 +1,7 @@
 # /// script
 # dependencies = [
 #   "markdown",
+#   "Pygments",
 #   "PyYAML",
 # ]
 # ///
@@ -26,6 +27,13 @@ TEMPLATES = ROOT / "templates"
 OUT_DIR = Path(os.environ.get("SITE_OUT_DIR", ROOT)).resolve()
 
 MARKDOWN_EXTENSIONS = ["extra", "codehilite", "toc"]
+MARKDOWN_EXTENSION_CONFIGS = {
+    "codehilite": {
+        "css_class": "codehilite",
+        "guess_lang": False,
+        "use_pygments": True,
+    }
+}
 STATIC_ASSET_NAMES = ["styles.css", "script.js", "commander-mugshot.png"]
 OPTIONAL_STATIC_ASSET_NAMES = ["CNAME", "favicon.ico", "robots.txt"]
 
@@ -85,7 +93,11 @@ def load_markdown(path: Path, category: str, url: str) -> Entry:
         raise ValueError(f"{path} frontmatter must be a mapping")
 
     body_md = match.group(2).strip()
-    body_html = markdown.markdown(body_md, extensions=MARKDOWN_EXTENSIONS)
+    body_html = markdown.markdown(
+        body_md,
+        extensions=MARKDOWN_EXTENSIONS,
+        extension_configs=MARKDOWN_EXTENSION_CONFIGS,
+    )
     return Entry(
         category=category,
         slug=path.stem,
