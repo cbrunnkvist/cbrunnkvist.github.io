@@ -34,8 +34,19 @@ MARKDOWN_EXTENSION_CONFIGS = {
         "use_pygments": True,
     }
 }
-STATIC_ASSET_NAMES = ["styles.css", "script.js", "commander-mugshot.png"]
-OPTIONAL_STATIC_ASSET_NAMES = ["CNAME", "favicon.ico", "robots.txt"]
+STATIC_ASSET_NAMES = [
+    "styles.css",
+    "script.js",
+    "commander-mugshot.png",
+    "favicon.ico",
+    "favicon.svg",
+    "favicon-32.png",
+    "apple-touch-icon.png",
+    "icon-192.png",
+    "icon-512.png",
+    "site.webmanifest",
+]
+OPTIONAL_STATIC_ASSET_NAMES = ["CNAME", "robots.txt"]
 
 
 @dataclass(frozen=True)
@@ -320,6 +331,77 @@ def post_cards_html(posts: list[Entry], root_prefix: str = "") -> str:
     return "\n".join(log_parts)
 
 
+def directory_meta_html(items: list[tuple[str, str]]) -> str:
+    return "\n".join(
+        f"""<span class="directory-meta-item">
+                    <span class="directory-meta-label">{escape(label)}</span>
+                    <span class="directory-meta-value">{escape(value)}</span>
+                </span>"""
+        for label, value in items
+    )
+
+
+def directory_log_rows(posts: list[Entry], root_prefix: str = "") -> str:
+    rows = []
+    for post in posts:
+        href = href_for(post, root_prefix)
+        rows.append(
+            f"""<article class="directory-row directory-row-log">
+                <span class="directory-cell directory-glyph">▤</span>
+                <span class="directory-cell directory-date">{escape(str(post.meta["date"]))}</span>
+                <span class="directory-cell directory-kind">[{escape(str(post.meta["type"]))}]</span>
+                <span class="directory-cell directory-title"><a href="{href}">{escape(post.title)}</a></span>
+                <span class="directory-cell directory-tags">{tags_html(post.tags, root_prefix)}</span>
+                <span class="directory-cell directory-open"><a href="{href}">OPEN &gt;&gt;</a></span>
+            </article>"""
+        )
+
+    return "\n".join(rows)
+
+
+def directory_project_rows(projects: list[Entry], root_prefix: str = "") -> str:
+    rows = []
+    for project in projects:
+        href = href_for(project, root_prefix)
+        status = str(project.meta["status"])
+        stats = project.meta.get("stats") or []
+        stats_html = "\n".join(
+            f'<span class="sys-stat">{escape(str(stat))}</span>' for stat in stats
+        )
+        rows.append(
+            f"""<article class="directory-row directory-row-project">
+                <span class="directory-cell directory-glyph">{escape(str(project.meta["icon"]))}</span>
+                <span class="directory-cell directory-status"><span class="system-status {status_class(status)}">{escape(status)}</span></span>
+                <span class="directory-cell directory-title"><a href="{href}">{escape(str(project.meta["system_name"]))}</a></span>
+                <span class="directory-cell directory-signals">{stats_html}</span>
+                <span class="directory-cell directory-tags">{tags_html(project.tags, root_prefix)}</span>
+                <span class="directory-cell directory-open"><a href="{href}">OPEN &gt;&gt;</a></span>
+            </article>"""
+        )
+
+    return "\n".join(rows)
+
+
+def directory_tag_rows(items: list[dict[str, Any]], root_prefix: str = "../../") -> str:
+    rows = []
+    for item in items:
+        date = str(item.get("date") or item.get("modified_at") or item.get("created_at") or "----")
+        href = f"{root_prefix}{escape(str(item['url']))}"
+        category = str(item["category"])
+        kind = {"posts": "LOG", "projects": "PROJECT"}.get(category, category.upper())
+        rows.append(
+            f"""<article class="directory-row directory-row-tag">
+                <span class="directory-cell directory-glyph">◇</span>
+                <span class="directory-cell directory-date">{escape(date)}</span>
+                <span class="directory-cell directory-kind">[{escape(kind)}]</span>
+                <span class="directory-cell directory-title"><a href="{href}">{escape(str(item["title"]))}</a></span>
+                <span class="directory-cell directory-open"><a href="{href}">OPEN &gt;&gt;</a></span>
+            </article>"""
+        )
+
+    return "\n".join(rows)
+
+
 def build_projects(tag_index: dict[str, list[dict[str, Any]]]) -> list[Entry]:
     projects = load_entries("projects", "projects")
     for project in projects:
@@ -370,6 +452,17 @@ def index_tags(tag_index: dict[str, list[dict[str, Any]]], entry: Entry, title: 
 
 
 def render_content_page(entry: Entry, template_name: str, output_path: Path) -> None:
+    if entry.category == "projects":
+        back_href = "../../projects/"
+        back_label = "RETURN TO PROJECT DIRECTORY"
+    elif entry.category == "posts":
+        back_href = "../../log/"
+        back_label = "RETURN TO MISSION LOG"
+    else:
+        back_href = "../../"
+        back_label = "RETURN TO SECTOR MAP"
+
+    heading = str(entry.meta.get("system_name") or entry.title)
     meta_rows = []
     for label, field in [
         ("IDENTIFIER", "title"),
@@ -381,6 +474,8 @@ def render_content_page(entry: Entry, template_name: str, output_path: Path) -> 
     ]:
         value = entry.meta.get(field)
         if not value:
+            continue
+        if field == "title" and str(value) == heading:
             continue
         text = escape(str(value))
         if field in {"source_url", "repo_url"}:
@@ -396,13 +491,15 @@ def render_content_page(entry: Entry, template_name: str, output_path: Path) -> 
         load_template(template_name),
         {
             "title": escape(entry.title),
-            "heading": escape(str(entry.meta.get("system_name") or entry.title)),
+            "heading": escape(heading),
             "subtitle": escape(str(entry.meta.get("description") or entry.meta.get("excerpt") or "")),
             "meta": "\n".join(meta_rows),
             "byline": lifecycle_html(entry, "detail-byline"),
             "body": entry.body_html,
             "tags": tags_html(entry.tags, "../../"),
             "footer": lifecycle_footer_html(entry),
+            "back_href": back_href,
+            "back_label": back_label,
         },
     )
     write_text(output_path, html)
@@ -414,6 +511,7 @@ def render_collection_page(
     heading: str,
     intro: str,
     entries: str,
+    meta: str,
     output_path: Path,
     root_prefix: str = "../",
 ) -> None:
@@ -424,6 +522,7 @@ def render_collection_page(
             "heading": escape(heading),
             "intro": escape(intro),
             "entries": entries,
+            "meta": meta,
             "root_prefix": root_prefix,
         },
     )
@@ -438,28 +537,21 @@ def render_tag_pages(tag_index: dict[str, list[dict[str, Any]]]) -> None:
             key=lambda item: (str(item.get("date") or ""), item["title"]),
             reverse=True,
         )
-        item_html = []
-        for item in items:
-            date = f'<span class="log-date">{escape(str(item["date"]))}</span>' if item.get("date") else ""
-            byline = lifecycle_markup(lifecycle_values(item), "card-byline")
-            item_html.append(
-                f"""<article class="tag-index-entry">
-                    <div class="log-header">
-                        {date}
-                        <span class="log-type">[{escape(str(item["category"]).upper())}]</span>
-                    </div>
-                    <h2 class="log-title"><a href="../../{escape(str(item["url"]))}">{escape(str(item["title"]))}</a></h2>
-                    {byline}
-                    <p class="log-content">{escape(str(item["description"]))}</p>
-                </article>"""
-            )
-
         html = render_template(
             template,
             {
                 "title": f"#{escape(tag)}",
                 "heading": f"TAG INDEX: #{escape(tag)}",
-                "entries": "\n".join(item_html),
+                "intro": f"Cross-reference directory for all files tagged #{escape(tag)}.",
+                "meta": directory_meta_html(
+                    [
+                        ("PATH", f"/tags/{slugify(tag)}/"),
+                        ("MATCHES", str(len(items))),
+                        ("SCOPE", "LOG + PROJECTS"),
+                        ("SORT", "DATE DESC"),
+                    ]
+                ),
+                "entries": directory_tag_rows(items),
             },
         )
         write_text(OUT_DIR / "tags" / slugify(tag) / "index.html", html)
@@ -512,14 +604,30 @@ def build() -> None:
         title="Mission Log",
         heading="MISSION LOG",
         intro="Full archive of operational notes, release logs, protocol work, and field reports.",
-        entries=post_cards_html(posts, "../"),
+        meta=directory_meta_html(
+            [
+                ("PATH", "/log/"),
+                ("ENTRIES", str(len(posts))),
+                ("SORT", "DATE DESC"),
+                ("MODE", "ARCHIVE"),
+            ]
+        ),
+        entries=directory_log_rows(posts, "../"),
         output_path=OUT_DIR / "log" / "index.html",
     )
     render_collection_page(
         title="Project Files",
         heading="PROJECT FILES",
         intro="Complete system manifest, ordered by current operational priority.",
-        entries=f'<div class="systems-grid">{project_cards_html(projects, "../")}</div>',
+        meta=directory_meta_html(
+            [
+                ("PATH", "/projects/"),
+                ("ENTRIES", str(len(projects))),
+                ("SORT", "MANUAL ORDER"),
+                ("MODE", "SYSTEMS"),
+            ]
+        ),
+        entries=directory_project_rows(projects, "../"),
         output_path=OUT_DIR / "projects" / "index.html",
     )
     render_tag_pages(tag_index)
