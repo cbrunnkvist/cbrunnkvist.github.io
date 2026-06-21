@@ -111,6 +111,40 @@ export function summarizeProject(project: ProjectFile): string {
 }
 ```
 
+## Panel Header Palette Expose
+
+<div class="panel-header-expose">
+  <section class="fe2-panel header-sample header-sample-teal">
+    <div class="fe2-panel-header">
+      <span class="fe2-header-title">OPTION A: TEAL COMMAND</span>
+      <span class="fe2-header-line">═══════════════════════</span>
+    </div>
+    <div class="header-sample-body">
+      Orange command title, cyan divider, dark teal-to-violet console surface.
+    </div>
+  </section>
+
+  <section class="fe2-panel header-sample header-sample-blue">
+    <div class="fe2-panel-header">
+      <span class="fe2-header-title">OPTION B: BLUE ARCHIVE [SELECTED]</span>
+      <span class="fe2-header-line">═══════════════════════</span>
+    </div>
+    <div class="header-sample-body">
+      Cyan title, amber divider, deep blue navigation-computer surface.
+    </div>
+  </section>
+
+  <section class="fe2-panel header-sample header-sample-violet">
+    <div class="fe2-panel-header">
+      <span class="fe2-header-title">OPTION C: VIOLET SIGNAL</span>
+      <span class="fe2-header-line">═══════════════════════</span>
+    </div>
+    <div class="header-sample-body">
+      Lavender title, green divider, dark violet signal-panel surface.
+    </div>
+  </section>
+</div>
+
 ---
 
 The final article can replace this placeholder once the design system has enough real pressure from tables, code, images, lists, and long-form copy.

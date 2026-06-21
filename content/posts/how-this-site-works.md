@@ -12,56 +12,45 @@ tags:
   - python
   - design
 ---
-This site is intentionally small: flat Markdown files, a handful of HTML templates, one Python build script, and no JavaScript package manager. The interesting part is not that it avoids a framework. The interesting part is that the build is now just large enough to behave like a real static site generator while staying easy to inspect.
+Flat Markdown files, a handful of HTML templates, one Python build script, no JavaScript package manager. The build is just large enough to behave like a real static site generator while staying readable in a single sitting.
 
-## Source of Truth
-
-The canonical content lives under `content/`.
+## File Structure
 
 ```text
 content/
-  about/
-    operator-profile.md
-  posts/
-    how-this-site-works.md
-  projects/
-    layout-calibration.md
+  about/operator-profile.md
+  posts/how-this-site-works.md
+  projects/layout-calibration.md
+templates/
+  index.template.html
+  detail.template.html
+  collection.template.html
+  tag.template.html
+build.py
+styles.css
+script.js
 ```
 
-Post and project slugs come from filenames. That means `content/posts/how-this-site-works.md` becomes `/log/how-this-site-works/`, and `content/projects/layout-calibration.md` becomes `/projects/layout-calibration/`.
+Content lives under `content/`, split by type. Slugs come from filenames: `content/posts/how-this-site-works.md` becomes `/log/how-this-site-works/`, and `content/projects/layout-calibration.md` becomes `/projects/layout-calibration/`.
 
-Frontmatter carries the display metadata:
+Each file has a YAML frontmatter block carrying display metadata — title, date, type, tags, and any type-specific fields like `system_name` or `repo_url`. The body is plain Markdown, supporting tables, fenced code, and standard article structure.
 
-```yaml
-title: How This Site Works
-date: 3309-06-21
-type: FIELD NOTE
-tags:
-  - site
-  - static
-  - markdown
-```
+## The Build Script
 
-The body is plain Markdown, including tables, images, fenced code, lists, and normal article sections.
+`build.py` is the whole generator. In order:
 
-## The Generator
+1. loads `content/about/operator-profile.md` and builds the homepage about panel
+2. loads all posts, sorts by date descending, collects tag references
+3. loads all projects, sorts by manual `order` field, collects tag references
+4. cleans previously generated directories
+5. renders a detail page for every post and every project
+6. renders the `/log/` and `/projects/` collection index pages
+7. renders one tag index page per unique tag, plus `tag-index.json`
+8. copies static assets into `dist/` when building for deployment
 
-`build.py` does the heavy lifting:
-
-- loads Markdown and YAML frontmatter
-- renders Markdown with syntax highlighting
-- generates the homepage from preview data
-- generates `/log/` and `/projects/` collection pages
-- generates detail pages under `/log/<slug>/` and `/projects/<slug>/`
-- generates tag pages and `tag-index.json`
-- copies static assets when building `dist/`
-
-The core loop is deliberately direct:
+The core rendering loop is direct by design:
 
 ```python
-projects = build_projects(tag_index)
-latest_intel, posts = build_posts(tag_index)
-
 for project in projects:
     render_content_page(project, "detail.template.html", output_path)
 
@@ -69,67 +58,55 @@ for post in posts:
     render_content_page(post, "detail.template.html", output_path)
 ```
 
-There is no hidden router. The generated file tree is the router.
+There is no router. The generated file tree is the URL structure.
 
-## Two Output Modes
+## Templates
 
-There are two build modes because local preview and deploy preview have different ergonomics.
+All four templates share the same page chrome — status bars, nav, space canvas, CRT overlay — and differ only in their main content area. `detail.template.html` handles both posts and projects. `collection.template.html` handles both `/log/` and `/projects/`. Placeholder substitution is a plain string replace; no template engine dependency.
 
-```bash
-make build
-make dist
-make dev
-```
+## Output Modes
 
-`make build` writes generated pages into the repository root, which keeps direct file inspection simple.
+Three `make` targets cover the main workflows:
 
-`make dist` writes a GitHub Pages-style artifact into `dist/`.
+| Target | What it does |
+|---|---|
+| `make build` | Writes generated pages into the repo root for direct inspection |
+| `make dist` | Writes a clean GitHub Pages artifact into `dist/` |
+| `make dev` | Builds `dist/`, serves locally, watches for changes, live-reloads |
 
-`make dev` builds `dist/`, serves it locally, watches source files, rebuilds on change, and injects a small live-reload script into HTML responses.
+Generated directories are wiped before each build, so a renamed Markdown file does not leave a stale route behind.
 
-## Collections and Previews
+## Homepage Previews
 
-The homepage is now a preview surface:
+The homepage surfaces:
 
-- latest 3 posts
-- first 3 projects by manual `order`
+- the 3 most recent posts, by date
+- the first 3 projects, by manual `order` field
 - links to the full `/log/` and `/projects/` indexes
 
-The full collection pages are canonical. Detail URLs stay stable:
-
-```text
-/log/how-this-site-works/
-/projects/layout-calibration/
-```
-
-Generated folders are cleaned before rebuilds, so renaming a Markdown file removes the old output path on the next build.
+Preview data is computed once during the build pass and injected into `index.template.html`. There is no client-side data fetching.
 
 ## Styling Pressure
 
-The layout is being tuned around a specific mood: Frontier: Elite II, Privateer-era VGA panels, and space-station terminal UI. The content system now has enough shapes to pressure-test that design:
+The visual theme is Frontier: Elite II — VGA-era panel UI, CRT scanlines, a WebGL2 space scene. The content model exists partly to pressure-test that design across its full range of shapes:
 
-- card titles, status badges, summaries, bylines, metrics, tags, and actions
-- article metadata rows
-- Markdown tables with translucent gradient panels
-- fenced code blocks with Pygments token spans
-- long-form project and post pages
+- card titles, status badges, bylines, tag chips, stat blocks, and action links
+- article metadata panels and long-form prose
+- Markdown tables with translucent gradient backgrounds
+- fenced code blocks with Pygments syntax token spans
 
-The placeholder project at `/projects/layout-calibration/` exists purely to exercise those shapes before every real project article is finished.
+The placeholder project at `/projects/layout-calibration/` exists solely to exercise those shapes before any real project article is complete.
 
 ## Checks
-
-The site also has a small static test suite now:
 
 ```bash
 make check
 ```
 
-It compiles the Python scripts, builds the site into a temporary directory, checks expected routes, scans generated output for unresolved template placeholders, and verifies that highlighted code blocks actually contain syntax token spans.
-
-That last check exists because a code block can look like it is "highlighted" at the wrapper level while still containing only plain text.
+Compiles the Python scripts, builds into a temporary directory, checks that expected routes exist, scans for unresolved template placeholders, and verifies that highlighted code blocks contain actual syntax token spans — not just a wrapper div around plain text.
 
 ## Why Keep It This Small?
 
-This repository could eventually grow into Eleventy, Astro, Hugo, or another static-site system. For now, the custom generator is still more useful than a framework because the site has unusual presentation requirements and a tiny content model.
+The site could migrate to Eleventy, Astro, or Hugo. It will, if the content model grows enough to justify it. For now, the custom generator fits the site better than a framework would: the presentation requirements are unusual and the content model is tiny.
 
-The rule is simple: add tooling when it removes real friction. Until then, the build should remain readable enough that opening `build.py` explains the whole machine.
+The rule is: add tooling when it removes real friction. Until then, opening `build.py` should explain the whole machine.

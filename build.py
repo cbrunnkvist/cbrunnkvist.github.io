@@ -351,7 +351,6 @@ def directory_log_rows(posts: list[Entry], root_prefix: str = "") -> str:
                 <span class="directory-cell directory-date">{escape(str(post.meta["date"]))}</span>
                 <span class="directory-cell directory-kind">[{escape(str(post.meta["type"]))}]</span>
                 <span class="directory-cell directory-title"><a href="{href}">{escape(post.title)}</a></span>
-                <span class="directory-cell directory-tags">{tags_html(post.tags, root_prefix)}</span>
                 <span class="directory-cell directory-open"><a href="{href}">OPEN &gt;&gt;</a></span>
             </article>"""
         )
@@ -463,38 +462,36 @@ def render_content_page(entry: Entry, template_name: str, output_path: Path) -> 
         back_label = "RETURN TO SECTOR MAP"
 
     heading = str(entry.meta.get("system_name") or entry.title)
-    meta_rows = []
-    for label, field in [
-        ("IDENTIFIER", "title"),
-        ("DATE", "date"),
-        ("CLASS", "type"),
-        ("STATUS", "status"),
-        ("SOURCE", "source_url"),
-        ("REPOSITORY", "repo_url"),
-    ]:
-        value = entry.meta.get(field)
-        if not value:
-            continue
-        if field == "title" and str(value) == heading:
-            continue
-        text = escape(str(value))
-        if field in {"source_url", "repo_url"}:
-            text = f'<a href="{text}" target="_blank" rel="noopener">{text}</a>'
-        meta_rows.append(
-            f"""<div class="detail-meta-item">
-                    <span class="detail-meta-label">{label}:</span>
-                    <span class="detail-meta-value">{text}</span>
-                </div>"""
+    subtitle = str(entry.meta.get("description") or entry.meta.get("excerpt") or "")
+
+    # Build the date+class row that sits below the subtitle panel
+    byline_parts = lifecycle_items(entry)  # [(label, value), ...]
+    left_items = []
+    for label, value in byline_parts:
+        safe = escape(value)
+        left_items.append(
+            f'<span class="detail-byline-item">'
+            f'<span class="detail-byline-label">{label}:</span>'
+            f'<time datetime="{safe}">{safe}</time>'
+            f'</span>'
         )
+    type_val = entry.meta.get("type")
+    right_html = f'<span class="detail-byline-class">{escape(str(type_val))}</span>' if type_val else ""
+    date_class_html = (
+        f'<div class="detail-byline detail-byline-row">'
+        f'<span class="detail-byline-left">{"".join(left_items)}</span>'
+        f'{right_html}'
+        f'</div>'
+    ) if (left_items or right_html) else ""
 
     html = render_template(
         load_template(template_name),
         {
             "title": escape(entry.title),
             "heading": escape(heading),
-            "subtitle": escape(str(entry.meta.get("description") or entry.meta.get("excerpt") or "")),
-            "meta": "\n".join(meta_rows),
-            "byline": lifecycle_html(entry, "detail-byline"),
+            "subtitle": escape(subtitle),
+            "meta": "",
+            "byline": date_class_html,
             "body": entry.body_html,
             "tags": tags_html(entry.tags, "../../"),
             "footer": lifecycle_footer_html(entry),
